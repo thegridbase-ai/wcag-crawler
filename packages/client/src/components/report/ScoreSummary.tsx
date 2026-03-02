@@ -13,6 +13,15 @@ export function ScoreSummary({ summary }: ScoreSummaryProps) {
     return '#dc2626';
   };
 
+  const getScoreLabel = (score: number) => {
+    if (score >= 90) return { text: 'Healthy', color: '#16a34a', bg: '#dcfce7' };
+    if (score >= 80) return { text: 'Good', color: '#16a34a', bg: '#dcfce7' };
+    if (score >= 50) return { text: 'Needs Improvement', color: '#ca8a04', bg: '#fef9c3' };
+    return { text: 'Poor', color: '#dc2626', bg: '#fee2e2' };
+  };
+
+  const scoreLabel = getScoreLabel(summary.score);
+
   const scoreData = [
     { name: 'Score', value: summary.score },
     { name: 'Remaining', value: 100 - summary.score },
@@ -62,7 +71,12 @@ export function ScoreSummary({ summary }: ScoreSummaryProps) {
             </span>
           </div>
         </div>
-        <p className="text-sm text-foreground-muted mt-2">Accessibility Score</p>
+        <div
+          className="mt-2 px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase"
+          style={{ color: scoreLabel.color, backgroundColor: scoreLabel.bg }}
+        >
+          {scoreLabel.text}
+        </div>
       </div>
 
       {/* Metrics */}

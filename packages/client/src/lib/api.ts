@@ -49,7 +49,8 @@ export const reportApi = {
     return response.data;
   },
 
-  exportUrl: (scanId: string) => `${API_BASE_URL}/api/reports/${scanId}/export`,
+  exportUrl: (scanId: string, format: 'html' | 'pdf' = 'html') =>
+    `${API_BASE_URL}/api/reports/${scanId}/export?format=${format}`,
 };
 
 export default api;

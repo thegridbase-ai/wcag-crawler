@@ -1,6 +1,6 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Loader2, RefreshCw, Filter } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, RefreshCw, Filter, ChevronDown, FileText, FileDown } from 'lucide-react';
 import { reportApi, scanApi } from '../lib/api';
 import { ScoreSummary } from '../components/report/ScoreSummary';
 import { PageIssues } from '../components/report/PageIssues';
@@ -25,6 +25,18 @@ export function ReportPage() {
   const [severityFilters, setSeverityFilters] = useState<Set<SeverityFilter>>(
     new Set(['critical', 'serious'])
   );
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setExportOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const toggleSeverity = (severity: SeverityFilter) => {
     const newFilters = new Set(severityFilters);
@@ -148,14 +160,38 @@ export function ReportPage() {
             )}
             Rescan
           </button>
-          <a
-            href={reportApi.exportUrl(report.scan.id)}
-            download
-            className="btn btn-secondary"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export HTML
-          </a>
+          <div className="relative" ref={exportRef}>
+            <button
+              onClick={() => setExportOpen(!exportOpen)}
+              className="btn btn-secondary"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export
+              <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${exportOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {exportOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-surface border border-border rounded-xl shadow-lg overflow-hidden z-50">
+                <a
+                  href={reportApi.exportUrl(report.scan.id, 'html')}
+                  download
+                  className="flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors"
+                  onClick={() => setExportOpen(false)}
+                >
+                  <FileText className="w-4 h-4 text-foreground-muted" />
+                  Export as HTML
+                </a>
+                <a
+                  href={reportApi.exportUrl(report.scan.id, 'pdf')}
+                  download
+                  className="flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors border-t border-border"
+                  onClick={() => setExportOpen(false)}
+                >
+                  <FileDown className="w-4 h-4 text-foreground-muted" />
+                  Export as PDF
+                </a>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

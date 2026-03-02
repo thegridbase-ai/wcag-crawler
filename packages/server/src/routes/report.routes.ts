@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { chromium } from 'playwright';
 import { ScanModel } from '../models/scan.model.js';
 import { reportService } from '../services/report.service.js';
 import { logger } from '../utils/logger.js';
@@ -33,8 +34,8 @@ export function createReportRoutes(): Router {
     }
   });
 
-  // GET /api/reports/:scanId/export - Export as self-contained HTML
-  router.get('/:scanId/export', (req: Request, res: Response) => {
+  // GET /api/reports/:scanId/export - Export as HTML or PDF
+  router.get('/:scanId/export', async (req: Request, res: Response) => {
     try {
       const scan = ScanModel.findById(req.params.scanId);
       if (!scan) {
@@ -54,10 +55,29 @@ export function createReportRoutes(): Router {
       }
 
       const html = generateExportHtml(report);
+      const format = req.query.format || 'html';
 
-      res.setHeader('Content-Type', 'text/html');
-      res.setHeader('Content-Disposition', `attachment; filename="a11y-report-${scan.id}.html"`);
-      res.send(html);
+      if (format === 'pdf') {
+        const browser = await chromium.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+        try {
+          const page = await browser.newPage();
+          await page.setContent(html, { waitUntil: 'networkidle' });
+          const pdf = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' },
+          });
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `attachment; filename="a11y-report-${scan.id}.pdf"`);
+          res.send(pdf);
+        } finally {
+          await browser.close();
+        }
+      } else {
+        res.setHeader('Content-Type', 'text/html');
+        res.setHeader('Content-Disposition', `attachment; filename="a11y-report-${scan.id}.html"`);
+        res.send(html);
+      }
     } catch (error) {
       logger.error('Failed to export report', { error: (error as Error).message });
       res.status(500).json({ error: 'Internal server error' });
@@ -137,6 +157,20 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
     .score-circle.good { background: #dcfce7; border: 3px solid var(--success); color: var(--success); }
     .score-circle.moderate { background: #fef9c3; border: 3px solid var(--moderate); color: var(--moderate); }
     .score-circle.poor { background: #fee2e2; border: 3px solid var(--critical); color: var(--critical); }
+    .score-label {
+      display: inline-block;
+      padding: 0.35rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 0.75rem;
+    }
+    .score-label.healthy { background: #dcfce7; color: var(--success); }
+    .score-label.good { background: #dcfce7; color: var(--success); }
+    .score-label.needs-improvement { background: #fef9c3; color: var(--moderate); }
+    .score-label.poor { background: #fee2e2; color: var(--critical); }
     .metrics { display: flex; gap: 2rem; }
     .metric { text-align: center; }
     .metric-value { font-size: 1.5rem; font-weight: bold; font-family: 'JetBrains Mono', monospace; }
@@ -202,8 +236,13 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
     </div>
 
     <div class="score-card">
-      <div class="score-circle ${summary.score >= 80 ? 'good' : summary.score >= 50 ? 'moderate' : 'poor'}">
-        ${summary.score}
+      <div style="text-align: center;">
+        <div class="score-circle ${summary.score >= 80 ? 'good' : summary.score >= 50 ? 'moderate' : 'poor'}">
+          ${summary.score}
+        </div>
+        <div class="score-label ${summary.score >= 90 ? 'healthy' : summary.score >= 80 ? 'good' : summary.score >= 50 ? 'needs-improvement' : 'poor'}">
+          ${summary.score >= 90 ? 'Healthy' : summary.score >= 80 ? 'Good' : summary.score >= 50 ? 'Needs Improvement' : 'Poor'}
+        </div>
       </div>
       <div>
         <div class="metrics">
