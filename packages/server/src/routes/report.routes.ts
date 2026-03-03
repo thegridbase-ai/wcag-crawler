@@ -148,7 +148,7 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
     arrowR: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
   };
 
-  const circumference = Math.round(2 * Math.PI * 42);
+  const circumference = Math.round(2 * Math.PI * 44);
   const dashOffset = Math.round(circumference * (1 - summary.score / 100));
 
   return `<!DOCTYPE html>
@@ -200,15 +200,15 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
       background: #fff; border: 2px solid ${healthColor};
       border-radius: 16px; margin-bottom: 6px;
     }
-    .ring { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
+    .ring { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
     .ring svg { transform: rotate(-90deg); }
-    .ring .bg { fill: none; stroke: #e2e8f0; stroke-width: 7; }
-    .ring .fg { fill: none; stroke: ${healthColor}; stroke-width: 7; stroke-linecap: round; }
+    .ring .bg { fill: none; stroke: #e2e8f0; stroke-width: 5; }
+    .ring .fg { fill: none; stroke: ${healthColor}; stroke-width: 5; stroke-linecap: round; }
     .ring-inner {
       position: absolute; inset: 0;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
     }
-    .ring-inner .n { font-size: 2.4rem; font-weight: 900; color: ${healthColor}; line-height: 1; }
+    .ring-inner .n { font-size: 2.2rem; font-weight: 900; color: ${healthColor}; line-height: 1; }
     .ring-inner .o { font-size: 0.55rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; }
     .hero-text h2 { font-size: 1.4rem; font-weight: 800; color: ${healthColor}; margin-bottom: 4px; }
     .hero-text p { font-size: 0.82rem; color: #475569; max-width: 340px; line-height: 1.5; }
@@ -298,9 +298,9 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
   <!-- SCORE -->
   <div class="hero">
     <div class="ring">
-      <svg viewBox="0 0 100 100" width="110" height="110">
-        <circle class="bg" cx="50" cy="50" r="42"/>
-        <circle class="fg" cx="50" cy="50" r="42"
+      <svg viewBox="0 0 100 100" width="120" height="120">
+        <circle class="bg" cx="50" cy="50" r="44"/>
+        <circle class="fg" cx="50" cy="50" r="44"
           stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}"/>
       </svg>
       <div class="ring-inner">
