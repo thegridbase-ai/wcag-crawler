@@ -94,7 +94,8 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
 
   const reportDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const healthLabel = summary.score >= 90 ? 'Healthy' : summary.score >= 80 ? 'Good' : summary.score >= 50 ? 'Needs Improvement' : 'Poor';
-  const healthClass = summary.score >= 90 ? 'healthy' : summary.score >= 80 ? 'good' : summary.score >= 50 ? 'moderate' : 'poor';
+  const healthColor = summary.score >= 90 ? '#16a34a' : summary.score >= 80 ? '#16a34a' : summary.score >= 50 ? '#ca8a04' : '#dc2626';
+  const healthBg = summary.score >= 90 ? '#f0fdf4' : summary.score >= 80 ? '#f0fdf4' : summary.score >= 50 ? '#fefce8' : '#fef2f2';
 
   const totalUniqueIssues = (summary.ruleCountBySeverity?.critical || 0) +
     (summary.ruleCountBySeverity?.serious || 0) +
@@ -102,27 +103,25 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
     (summary.ruleCountBySeverity?.minor || 0);
 
   const hostname = new URL(scan.root_url).hostname;
-
-  // Build strengths list
-  const strengths: string[] = [];
-  if (summary.score >= 50) strengths.push(`Overall accessibility score of <strong>${summary.score}/100</strong> — the site has a solid foundation.`);
-  if (summary.bySeverity.critical === 0) strengths.push('No critical accessibility barriers were found.');
-  if (summary.bySeverity.serious === 0) strengths.push('No serious accessibility issues detected.');
-  if (summary.bySeverity.critical === 0 && summary.bySeverity.serious === 0) strengths.push('All pages are free of high-severity blockers — great work!');
   const pagesWithNoIssues = summary.totalPages - pageSpecificIssues.length;
-  if (pagesWithNoIssues > 0) strengths.push(`<strong>${pagesWithNoIssues}</strong> of ${summary.totalPages} pages have no page-specific issues.`);
-  if (summary.totalPages >= 10) strengths.push(`Comprehensive coverage: <strong>${summary.totalPages} pages</strong> were evaluated.`);
-  if (strengths.length === 0) strengths.push(`${summary.totalPages} pages were scanned for accessibility issues.`);
+  const cleanPagePercent = summary.totalPages > 0 ? Math.round((pagesWithNoIssues / summary.totalPages) * 100) : 0;
 
-  // Build improvements list (top 5 most impactful)
+  // Build strengths
+  const strengths: string[] = [];
+  if (summary.bySeverity.critical === 0) strengths.push('Zero critical barriers found');
+  if (summary.bySeverity.serious === 0) strengths.push('No serious issues detected');
+  if (pagesWithNoIssues > 0) strengths.push(`${pagesWithNoIssues} of ${summary.totalPages} pages are clean`);
+  if (summary.score >= 80) strengths.push('Strong accessibility foundation');
+  if (strengths.length === 0) strengths.push(`${summary.totalPages} pages evaluated`);
+
+  // Build improvements
   const improvements: string[] = [];
-  if (summary.bySeverity.critical > 0) improvements.push(`Resolve <strong>${summary.bySeverity.critical}</strong> critical issue${summary.bySeverity.critical > 1 ? 's' : ''} that block access to content.`);
-  if (summary.bySeverity.serious > 0) improvements.push(`Address <strong>${summary.bySeverity.serious}</strong> serious issue${summary.bySeverity.serious > 1 ? 's' : ''} to remove significant barriers.`);
-  if (sharedComponents.length > 0) improvements.push(`Fix shared component issues (${sharedComponents.length}) — each fix improves multiple pages at once.`);
-  if (summary.bySeverity.moderate > 0) improvements.push(`Review <strong>${summary.bySeverity.moderate}</strong> moderate issue${summary.bySeverity.moderate > 1 ? 's' : ''} for a better user experience.`);
-  if (summary.bySeverity.minor > 0) improvements.push(`Polish <strong>${summary.bySeverity.minor}</strong> minor issue${summary.bySeverity.minor > 1 ? 's' : ''} as part of routine maintenance.`);
+  if (summary.bySeverity.critical > 0) improvements.push(`${summary.bySeverity.critical} critical issue${summary.bySeverity.critical > 1 ? 's' : ''} to fix`);
+  if (summary.bySeverity.serious > 0) improvements.push(`${summary.bySeverity.serious} serious issue${summary.bySeverity.serious > 1 ? 's' : ''} to address`);
+  if (sharedComponents.length > 0) improvements.push(`${sharedComponents.length} shared component${sharedComponents.length > 1 ? 's' : ''} to update`);
+  if (summary.bySeverity.moderate > 0) improvements.push(`${summary.bySeverity.moderate} moderate item${summary.bySeverity.moderate > 1 ? 's' : ''} to review`);
 
-  // Top issue types (by unique rule count)
+  // Top issues
   const allIssues = [
     ...sharedComponents.flatMap(c => c.issues),
     ...pageSpecificIssues.flatMap(p => p.issues),
@@ -138,364 +137,476 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
   }
   const topIssues = [...ruleMap.entries()]
     .sort((a, b) => {
-      const impactOrder: Record<string, number> = { critical: 0, serious: 1, moderate: 2, minor: 3 };
-      const diff = (impactOrder[a[1].impact] ?? 4) - (impactOrder[b[1].impact] ?? 4);
+      const order: Record<string, number> = { critical: 0, serious: 1, moderate: 2, minor: 3 };
+      const diff = (order[a[1].impact] ?? 4) - (order[b[1].impact] ?? 4);
       return diff !== 0 ? diff : b[1].count - a[1].count;
     })
-    .slice(0, 5);
+    .slice(0, 4);
+
+  // SVG icons
+  const icons = {
+    globe: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
+    pages: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+    search: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+    shield: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+    check: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+    alert: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c2410c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+    layers: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`,
+    zap: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+    arrowDown: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`,
+    arrowRight: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
+  };
+
+  const impactColor: Record<string, string> = { critical: '#b91c1c', serious: '#c2410c', moderate: '#a16207', minor: '#1d4ed8' };
+  const impactBg: Record<string, string> = { critical: '#fef2f2', serious: '#fff7ed', moderate: '#fefce8', minor: '#eff6ff' };
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Accessibility Health Summary — ${hostname}</title>
+  <title>Accessibility Report — ${hostname}</title>
   <style>
-    @page { size: A4; margin: 1.8cm 2cm; }
+    @page { size: A4; margin: 1.4cm 1.6cm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      color: #334155;
+      color: #475569;
+      background: #f1f5f9;
+      line-height: 1.5;
+      font-size: 12px;
+    }
+    .page {
+      max-width: 800px;
+      margin: 0 auto;
       background: #fff;
-      line-height: 1.55;
-      font-size: 13px;
+      padding: 32px 36px;
     }
+    @media print { body { background: #fff; } .page { padding: 0; } }
 
-    /* Header strip */
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      padding-bottom: 14px;
-      border-bottom: 3px solid #0f172a;
-      margin-bottom: 18px;
+    /* ── Header ── */
+    .report-header {
+      text-align: center;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #e2e8f0;
     }
-    .header h1 {
-      font-size: 1.35rem;
+    .report-header .brand {
+      font-size: 0.6rem;
       font-weight: 700;
-      color: #0f172a;
-      letter-spacing: -0.02em;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 6px;
     }
-    .header .site-url {
+    .report-header h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.03em;
+      margin-bottom: 2px;
+    }
+    .report-header .subtitle {
       font-size: 0.85rem;
       color: #64748b;
-      margin-top: 2px;
-    }
-    .header .date {
-      font-size: 0.75rem;
-      color: #94a3b8;
-      text-align: right;
-      white-space: nowrap;
     }
 
-    /* Score hero */
+    /* ── Section Titles ── */
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #0f172a;
+      text-align: center;
+      margin: 24px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e2e8f0;
+      letter-spacing: -0.01em;
+    }
+
+    /* ── Score Hero ── */
     .score-hero {
       display: flex;
       align-items: center;
-      gap: 24px;
-      padding: 18px 24px;
-      border-radius: 12px;
-      margin-bottom: 18px;
+      justify-content: center;
+      gap: 20px;
+      padding: 20px;
+      border-radius: 16px;
+      margin-bottom: 20px;
     }
-    .score-hero.healthy { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0; }
-    .score-hero.good { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0; }
-    .score-hero.moderate { background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%); border: 1px solid #fef08a; }
-    .score-hero.poor { background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border: 1px solid #fecaca; }
-    .score-circle {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
+    .score-ring {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      flex-shrink: 0;
+    }
+    .score-ring svg { transform: rotate(-90deg); }
+    .score-ring .bg { fill: none; stroke: #e2e8f0; stroke-width: 6; }
+    .score-ring .fg { fill: none; stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 1s; }
+    .score-inner {
+      position: absolute;
+      inset: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      flex-shrink: 0;
-      background: #fff;
     }
-    .score-hero.healthy .score-circle { border: 4px solid #16a34a; }
-    .score-hero.good .score-circle { border: 4px solid #16a34a; }
-    .score-hero.moderate .score-circle { border: 4px solid #ca8a04; }
-    .score-hero.poor .score-circle { border: 4px solid #dc2626; }
-    .score-num { font-size: 1.8rem; font-weight: 800; line-height: 1; }
-    .score-hero.healthy .score-num { color: #16a34a; }
-    .score-hero.good .score-num { color: #16a34a; }
-    .score-hero.moderate .score-num { color: #ca8a04; }
-    .score-hero.poor .score-num { color: #dc2626; }
-    .score-label { font-size: 0.6rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; }
-    .score-text h2 {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: #0f172a;
+    .score-inner .num {
+      font-size: 2rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .score-inner .of {
+      font-size: 0.55rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .score-detail {
+      text-align: left;
+    }
+    .score-detail .label {
+      font-size: 1.3rem;
+      font-weight: 800;
+      line-height: 1.2;
       margin-bottom: 4px;
     }
-    .score-text p { color: #475569; font-size: 0.85rem; }
+    .score-detail .desc {
+      font-size: 0.8rem;
+      color: #64748b;
+      max-width: 320px;
+    }
 
-    /* Quick stats row */
-    .stats-row {
+    /* ── Scan Stats Flow ── */
+    .scan-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+    .flow-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      min-width: 120px;
+    }
+    .flow-card .icon { margin-bottom: 6px; display: flex; justify-content: center; }
+    .flow-card .big-num {
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: #0f172a;
+      line-height: 1;
+    }
+    .flow-card .flow-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 2px;
+    }
+    .flow-card .flow-desc {
+      font-size: 0.65rem;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+    .flow-arrow {
+      display: flex;
+      align-items: center;
+      color: #cbd5e1;
+    }
+
+    /* ── Severity Cards Row ── */
+    .severity-row {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      margin-bottom: 18px;
-    }
-    .stat-box {
-      text-align: center;
-      padding: 10px 8px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-    }
-    .stat-box .num { font-size: 1.4rem; font-weight: 800; color: #0f172a; line-height: 1.2; }
-    .stat-box .lbl { font-size: 0.65rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; }
-    .stat-box.critical .num { color: #b91c1c; }
-    .stat-box.serious .num { color: #c2410c; }
-    .stat-box.moderate .num { color: #a16207; }
-    .stat-box.minor .num { color: #1d4ed8; }
-
-    /* Two-column layout */
-    .two-col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 18px;
-    }
-    .col-card {
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    .col-card-header {
-      padding: 8px 14px;
-      font-weight: 700;
-      font-size: 0.8rem;
-      color: #fff;
-      letter-spacing: 0.03em;
-    }
-    .col-card-header.green { background: #16a34a; }
-    .col-card-header.blue { background: #1e40af; }
-    .col-card-body {
-      padding: 12px 14px;
-    }
-    .col-card-body ul {
-      list-style: none;
-      padding: 0;
-    }
-    .col-card-body li {
-      padding: 5px 0;
-      font-size: 0.8rem;
-      color: #334155;
-      border-bottom: 1px solid #f1f5f9;
-      display: flex;
-      align-items: flex-start;
       gap: 8px;
+      margin-bottom: 20px;
     }
-    .col-card-body li:last-child { border-bottom: none; }
-    .col-card-body li .icon { flex-shrink: 0; font-size: 0.85rem; margin-top: 1px; }
-
-    /* Top issues table */
-    .issues-section {
-      margin-bottom: 16px;
+    .sev-card {
+      border-radius: 10px;
+      padding: 12px 10px;
+      text-align: center;
+      border: 1px solid #e2e8f0;
     }
-    .issues-section h3 {
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: #0f172a;
-      margin-bottom: 8px;
+    .sev-card .sev-num {
+      font-size: 1.6rem;
+      font-weight: 900;
+      line-height: 1;
     }
-    .issues-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.78rem;
-    }
-    .issues-table th {
-      background: #0f172a;
-      color: #fff;
-      padding: 6px 10px;
-      text-align: left;
-      font-size: 0.65rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .issues-table td {
-      padding: 6px 10px;
-      border-bottom: 1px solid #e2e8f0;
-      vertical-align: top;
-    }
-    .issues-table tr:nth-child(even) td { background: #f8fafc; }
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
+    .sev-card .sev-label {
       font-size: 0.6rem;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.06em;
+      margin-top: 2px;
     }
-    .badge-critical { background: #fef2f2; color: #b91c1c; }
-    .badge-serious { background: #fff7ed; color: #c2410c; }
-    .badge-moderate { background: #fefce8; color: #a16207; }
-    .badge-minor { background: #eff6ff; color: #1d4ed8; }
+    .sev-card .sev-desc {
+      font-size: 0.6rem;
+      color: #94a3b8;
+      margin-top: 3px;
+    }
 
-    /* Severity mini bar */
-    .severity-mini {
-      display: flex;
-      height: 8px;
-      border-radius: 4px;
-      overflow: hidden;
-      background: #f1f5f9;
-      margin-bottom: 6px;
-    }
-    .severity-mini span { height: 100%; }
-    .severity-legend {
-      display: flex;
+    /* ── Insights Grid ── */
+    .insights-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 12px;
-      font-size: 0.7rem;
-      color: #64748b;
+      margin-bottom: 20px;
     }
-    .severity-legend .dot {
+    .insight-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .insight-header {
+      padding: 8px 14px;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .insight-header svg { width: 14px; height: 14px; stroke: #fff; }
+    .insight-header.green { background: #16a34a; }
+    .insight-header.amber { background: #1e40af; }
+    .insight-body {
+      padding: 10px 14px;
+    }
+    .insight-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 5px 0;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .insight-item + .insight-item { border-top: 1px solid #f1f5f9; }
+    .insight-icon {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      font-weight: 700;
+      margin-top: 1px;
+    }
+    .insight-icon.green { background: #dcfce7; color: #16a34a; }
+    .insight-icon.blue { background: #dbeafe; color: #1e40af; }
+
+    /* ── Top Issues ── */
+    .top-issues {
+      margin-bottom: 16px;
+    }
+    .issue-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      background: #fff;
+    }
+    .issue-sev {
       display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 2px;
-      margin-right: 4px;
-      vertical-align: middle;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.55rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
+    .issue-name {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #0f172a;
+      flex-shrink: 0;
+    }
+    .issue-desc {
+      font-size: 0.72rem;
+      color: #64748b;
+      flex: 1;
     }
 
-    /* Footer */
-    .footer {
-      margin-top: 14px;
-      padding-top: 10px;
+    /* ── Footer ── */
+    .report-footer {
+      margin-top: 20px;
+      padding-top: 12px;
       border-top: 1px solid #e2e8f0;
       display: flex;
       justify-content: space-between;
-      font-size: 0.65rem;
+      align-items: center;
+      font-size: 0.6rem;
       color: #94a3b8;
     }
-
-    @media print {
-      body { font-size: 11px; }
+    .report-footer .method {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .report-footer .method span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
   </style>
 </head>
 <body>
+<div class="page">
 
-  <!-- Header -->
-  <div class="header">
-    <div>
-      <h1>Accessibility Health Summary</h1>
-      <div class="site-url">${escapeHtml(scan.root_url)}</div>
-    </div>
-    <div class="date">
-      ${reportDate}<br>
-      WCAG 2.1 AA &middot; ${summary.totalPages} pages
-    </div>
+  <!-- ═══ HEADER ═══ -->
+  <div class="report-header">
+    <div class="brand">WCAG Accessibility Report</div>
+    <h1>Your Accessibility<br>Health Report</h1>
+    <div class="subtitle">${escapeHtml(scan.root_url)} &middot; ${reportDate}</div>
   </div>
 
-  <!-- Score Hero -->
-  <div class="score-hero ${healthClass}">
-    <div class="score-circle">
-      <div class="score-num">${summary.score}</div>
-      <div class="score-label">/ 100</div>
+  <!-- ═══ SCORE HERO ═══ -->
+  <div class="score-hero" style="background: ${healthBg}; border: 1px solid ${healthColor}22;">
+    <div class="score-ring">
+      <svg viewBox="0 0 100 100" width="100" height="100">
+        <circle class="bg" cx="50" cy="50" r="42" />
+        <circle class="fg" cx="50" cy="50" r="42"
+          stroke="${healthColor}"
+          stroke-dasharray="${Math.round(2 * Math.PI * 42)}"
+          stroke-dashoffset="${Math.round(2 * Math.PI * 42 * (1 - summary.score / 100))}" />
+      </svg>
+      <div class="score-inner">
+        <div class="num" style="color:${healthColor};">${summary.score}</div>
+        <div class="of">out of 100</div>
+      </div>
     </div>
-    <div class="score-text">
-      <h2>${healthLabel}</h2>
-      <p>${summary.score >= 90
-        ? `${escapeHtml(hostname)} demonstrates strong accessibility practices. The site provides an inclusive experience for users with disabilities.`
+    <div class="score-detail">
+      <div class="label" style="color:${healthColor};">${healthLabel}</div>
+      <div class="desc">${summary.score >= 90
+        ? `${escapeHtml(hostname)} demonstrates strong accessibility. Your site provides an inclusive experience for users with disabilities.`
         : summary.score >= 80
-          ? `${escapeHtml(hostname)} shows good accessibility with room for improvement. Most content is accessible to users with disabilities.`
+          ? `${escapeHtml(hostname)} shows good accessibility with room to grow. Most content is accessible.`
           : summary.score >= 50
-            ? `${escapeHtml(hostname)} has a foundation for accessibility but needs attention in key areas to improve the experience for all users.`
-            : `${escapeHtml(hostname)} requires accessibility improvements to ensure equal access for all users.`
-      }</p>
+            ? `${escapeHtml(hostname)} has a foundation but needs attention in key areas for better inclusivity.`
+            : `${escapeHtml(hostname)} needs accessibility improvements to ensure equal access for all users.`
+      }</div>
     </div>
   </div>
 
-  <!-- Quick Stats -->
-  <div class="stats-row">
-    <div class="stat-box">
-      <div class="num">${summary.totalPages}</div>
-      <div class="lbl">Pages Scanned</div>
+  <!-- ═══ SCAN STATS FLOW ═══ -->
+  <div class="section-title">Scan Overview</div>
+  <div class="scan-flow">
+    <div class="flow-card">
+      <div class="icon">${icons.globe}</div>
+      <div class="big-num">${summary.totalPages}</div>
+      <div class="flow-label">Pages Scanned</div>
+      <div class="flow-desc">Discovered via crawling</div>
     </div>
-    <div class="stat-box">
-      <div class="num">${totalUniqueIssues}</div>
-      <div class="lbl">Unique Issues</div>
+    <div class="flow-arrow">${icons.arrowRight}</div>
+    <div class="flow-card">
+      <div class="icon">${icons.search}</div>
+      <div class="big-num">${summary.totalIssuesRaw}</div>
+      <div class="flow-label">Issues Found</div>
+      <div class="flow-desc">Raw accessibility violations</div>
     </div>
-    <div class="stat-box">
-      <div class="num">${summary.totalIssuesDeduplicated}</div>
-      <div class="lbl">Total Occurrences</div>
+    <div class="flow-arrow">${icons.arrowRight}</div>
+    <div class="flow-card">
+      <div class="icon">${icons.layers}</div>
+      <div class="big-num">${totalUniqueIssues}</div>
+      <div class="flow-label">Unique Issues</div>
+      <div class="flow-desc">After deduplication</div>
     </div>
-    <div class="stat-box">
-      <div class="num">${sharedComponents.length}</div>
-      <div class="lbl">Shared Components</div>
-    </div>
-  </div>
-
-  <!-- Severity Mini Bar -->
-  <div style="margin-bottom: 18px;">
-    <div class="severity-mini">
-      ${summary.totalIssuesRaw > 0 ? `
-        <span style="width:${(summary.bySeverity.critical / summary.totalIssuesRaw) * 100}%;background:#b91c1c;"></span>
-        <span style="width:${(summary.bySeverity.serious / summary.totalIssuesRaw) * 100}%;background:#c2410c;"></span>
-        <span style="width:${(summary.bySeverity.moderate / summary.totalIssuesRaw) * 100}%;background:#a16207;"></span>
-        <span style="width:${(summary.bySeverity.minor / summary.totalIssuesRaw) * 100}%;background:#1d4ed8;"></span>
-      ` : '<span style="width:100%;background:#16a34a;"></span>'}
-    </div>
-    <div class="severity-legend">
-      <span><span class="dot" style="background:#b91c1c;"></span>Critical (${summary.bySeverity.critical})</span>
-      <span><span class="dot" style="background:#c2410c;"></span>Serious (${summary.bySeverity.serious})</span>
-      <span><span class="dot" style="background:#a16207;"></span>Moderate (${summary.bySeverity.moderate})</span>
-      <span><span class="dot" style="background:#1d4ed8;"></span>Minor (${summary.bySeverity.minor})</span>
+    <div class="flow-arrow">${icons.arrowRight}</div>
+    <div class="flow-card">
+      <div class="icon">${icons.check}</div>
+      <div class="big-num" style="color:${healthColor};">${cleanPagePercent}%</div>
+      <div class="flow-label">Clean Pages</div>
+      <div class="flow-desc">${pagesWithNoIssues} of ${summary.totalPages} pages</div>
     </div>
   </div>
 
-  <!-- Strengths & Improvements -->
-  <div class="two-col">
-    <div class="col-card">
-      <div class="col-card-header green">What's Strong</div>
-      <div class="col-card-body">
-        <ul>
-          ${strengths.map(s => `<li><span class="icon">&#10003;</span><span>${s}</span></li>`).join('')}
-        </ul>
+  <!-- ═══ SEVERITY BREAKDOWN ═══ -->
+  <div class="section-title">Issue Breakdown</div>
+  <div class="severity-row">
+    <div class="sev-card" style="background:${impactBg.critical};">
+      <div class="sev-num" style="color:${impactColor.critical};">${summary.bySeverity.critical}</div>
+      <div class="sev-label" style="color:${impactColor.critical};">Critical</div>
+      <div class="sev-desc">Blocks access entirely</div>
+    </div>
+    <div class="sev-card" style="background:${impactBg.serious};">
+      <div class="sev-num" style="color:${impactColor.serious};">${summary.bySeverity.serious}</div>
+      <div class="sev-label" style="color:${impactColor.serious};">Serious</div>
+      <div class="sev-desc">Significant barriers</div>
+    </div>
+    <div class="sev-card" style="background:${impactBg.moderate};">
+      <div class="sev-num" style="color:${impactColor.moderate};">${summary.bySeverity.moderate}</div>
+      <div class="sev-label" style="color:${impactColor.moderate};">Moderate</div>
+      <div class="sev-desc">Some barriers</div>
+    </div>
+    <div class="sev-card" style="background:${impactBg.minor};">
+      <div class="sev-num" style="color:${impactColor.minor};">${summary.bySeverity.minor}</div>
+      <div class="sev-label" style="color:${impactColor.minor};">Minor</div>
+      <div class="sev-desc">Small inconveniences</div>
+    </div>
+  </div>
+
+  <!-- ═══ INSIGHTS ═══ -->
+  <div class="insights-grid">
+    <div class="insight-card">
+      <div class="insight-header green">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        What's Strong
+      </div>
+      <div class="insight-body">
+        ${strengths.map(s => `<div class="insight-item"><span class="insight-icon green">&#10003;</span><span>${s}</span></div>`).join('')}
       </div>
     </div>
-    <div class="col-card">
-      <div class="col-card-header blue">What Can Improve</div>
-      <div class="col-card-body">
-        <ul>
-          ${improvements.length > 0
-            ? improvements.map(s => `<li><span class="icon">&#9655;</span><span>${s}</span></li>`).join('')
-            : '<li><span class="icon">&#10003;</span><span>No significant improvements needed — keep up the great work!</span></li>'
-          }
-        </ul>
+    <div class="insight-card">
+      <div class="insight-header amber">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        What Can Improve
+      </div>
+      <div class="insight-body">
+        ${improvements.length > 0
+          ? improvements.map(s => `<div class="insight-item"><span class="insight-icon blue">&#9655;</span><span>${s}</span></div>`).join('')
+          : '<div class="insight-item"><span class="insight-icon green">&#10003;</span><span>No significant improvements needed!</span></div>'
+        }
       </div>
     </div>
   </div>
 
-  <!-- Top Issues -->
+  <!-- ═══ TOP ISSUES ═══ -->
   ${topIssues.length > 0 ? `
-  <div class="issues-section">
-    <h3>Top Issues to Address</h3>
-    <table class="issues-table">
-      <thead><tr><th>Issue</th><th>Severity</th><th>Description</th></tr></thead>
-      <tbody>
-        ${topIssues.map(([ruleId, info]) => `
-          <tr>
-            <td style="font-weight:600;color:#0f172a;white-space:nowrap;">${escapeHtml(ruleId)}</td>
-            <td><span class="badge badge-${info.impact}">${info.impact}</span></td>
-            <td>${escapeHtml(info.desc)}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
+  <div class="top-issues">
+    <div class="section-title">Top Issues to Address</div>
+    ${topIssues.map(([ruleId, info]) => `
+      <div class="issue-row">
+        <span class="issue-sev" style="background:${impactBg[info.impact] || '#f1f5f9'};color:${impactColor[info.impact] || '#64748b'};">${info.impact}</span>
+        <span class="issue-name">${escapeHtml(ruleId)}</span>
+        <span class="issue-desc">${escapeHtml(info.desc)}</span>
+      </div>
+    `).join('')}
   </div>
   ` : ''}
 
-  <!-- Footer -->
-  <div class="footer">
-    <span>Generated by WCAG Crawler &middot; Automated Accessibility Scanner</span>
-    <span>${reportDate} &middot; WCAG 2.1 AA &middot; axe-core</span>
+  <!-- ═══ FOOTER ═══ -->
+  <div class="report-footer">
+    <span>Generated by WCAG Crawler</span>
+    <div class="method">
+      <span>${icons.shield.replace(/width="28" height="28"/g, 'width="12" height="12"')} WCAG 2.1 AA</span>
+      <span>${icons.search.replace(/width="28" height="28"/g, 'width="12" height="12"')} axe-core</span>
+      <span>${reportDate}</span>
+    </div>
   </div>
 
+</div>
 </body>
 </html>`;
 }
