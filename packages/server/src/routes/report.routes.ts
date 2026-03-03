@@ -189,7 +189,7 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
     /* ── Section Titles ── */
     .stitle {
       font-size: 0.85rem; font-weight: 800; color: #0f172a;
-      text-align: center; margin: 20px 0 12px;
+      text-align: center; margin: 28px 0 14px;
       text-transform: uppercase; letter-spacing: 0.08em;
     }
 
@@ -214,7 +214,7 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
     .hero-text p { font-size: 0.82rem; color: #475569; max-width: 340px; line-height: 1.5; }
 
     /* ── Flow ── */
-    .flow { display: flex; align-items: stretch; justify-content: center; gap: 4px; margin-bottom: 6px; }
+    .flow { display: flex; align-items: stretch; justify-content: center; gap: 4px; margin-bottom: 10px; }
     .fcard {
       flex: 1; max-width: 145px;
       background: #fff; border: 1.5px solid #e2e8f0; border-radius: 12px;
@@ -227,7 +227,7 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
     .farr { display: flex; align-items: center; padding: 0 2px; }
 
     /* ── Severity Row ── */
-    .srow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 6px; }
+    .srow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
     .sc {
       background: #fff; border-radius: 10px;
       padding: 14px 8px; text-align: center;
@@ -238,7 +238,7 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
     .sc .sd { font-size: 0.58rem; color: #94a3b8; margin-top: 3px; }
 
     /* ── Insights ── */
-    .igrid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 6px; }
+    .igrid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 28px; margin-bottom: 10px; }
     .icard { border-radius: 12px; overflow: hidden; border: 1.5px solid #e2e8f0; }
     .ihdr {
       padding: 7px 14px; font-size: 0.68rem; font-weight: 800;
