@@ -275,6 +275,21 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
     .iname { font-size: 0.78rem; font-weight: 700; color: #0f172a; flex-shrink: 0; }
     .idesc { font-size: 0.72rem; color: #64748b; flex: 1; }
 
+    /* ── Evaluation Methods ── */
+    .evalmethods {
+      margin-top: 16px; padding: 14px 16px;
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+    }
+    .evalmethods .stitle { margin-bottom: 8px; }
+    .evalmethods p {
+      font-size: 0.72rem; color: #475569; line-height: 1.6; margin: 0 0 6px 0;
+    }
+    .evalmethods ul {
+      font-size: 0.72rem; color: #475569; line-height: 1.6;
+      margin: 4px 0 0 0; padding-left: 18px;
+    }
+    .evalmethods li { margin-bottom: 3px; }
+
     /* ── Footer ── */
     .ftr {
       margin-top: 16px; padding-top: 10px;
@@ -404,6 +419,19 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
     `).join('')}
   </div>
   ` : ''}
+
+  <!-- EVALUATION METHODS -->
+  <div class="evalmethods">
+    <div class="stitle">Evaluation Methods</div>
+    <p>This report was generated using automated accessibility testing with the following methodology:</p>
+    <ul>
+      <li><strong>Engine:</strong> axe-core (Deque Systems) &mdash; an industry-standard, open-source accessibility testing engine.</li>
+      <li><strong>Standard:</strong> WCAG 2.1 Level A and Level AA success criteria.</li>
+      <li><strong>Scope:</strong> Automated detection of programmatically identifiable violations including color contrast, missing alt text, ARIA attribute misuse, form labeling, heading structure, keyboard accessibility, and document language.</li>
+      <li><strong>Deduplication:</strong> Shared component analysis groups repeated issues across pages (e.g., header, navigation, footer) to avoid inflated issue counts.</li>
+    </ul>
+    <p><strong>Limitations:</strong> Automated testing can detect approximately 30&ndash;40% of WCAG criteria. The following areas require manual review: media alternatives (captions, audio descriptions), focus order and keyboard trap behavior, content-on-hover/focus interactions, responsive reflow, error prevention and suggestion logic, and sensory-only instructions.</p>
+  </div>
 
   <!-- FOOTER -->
   <div class="ftr">
