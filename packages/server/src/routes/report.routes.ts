@@ -63,7 +63,7 @@ export function createReportRoutes(): Router {
           const page = await browser.newPage();
           await page.setContent(html, { waitUntil: 'networkidle' });
           const pdf = await page.pdf({
-            format: 'A4',
+            format: 'Letter',
             printBackground: true,
             margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' },
           });
@@ -158,7 +158,7 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Accessibility Report — ${hostname}</title>
   <style>
-    @page { size: A4; margin: 1.2cm 1.4cm; }
+    @page { size: Letter; margin: 1.2cm 1.4cm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
