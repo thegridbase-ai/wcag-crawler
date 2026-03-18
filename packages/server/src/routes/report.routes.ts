@@ -171,7 +171,7 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
     @media print { .page { padding: 0; } }
 
     /* ── Header ── */
-    .hdr { text-align: center; margin-bottom: 22px; }
+    .hdr { text-align: center; margin-bottom: 14px; }
     .hdr .brand {
       display: inline-block;
       font-size: 0.6rem; font-weight: 700;
@@ -184,21 +184,21 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
     .hdr .sub { font-size: 0.8rem; color: #64748b; margin-top: 4px; }
 
     /* ── Divider ── */
-    .divider { height: 2px; background: linear-gradient(90deg, transparent, #cbd5e1, transparent); margin: 18px 0; }
+    .divider { height: 2px; background: linear-gradient(90deg, transparent, #cbd5e1, transparent); margin: 12px 0; }
 
     /* ── Section Titles ── */
     .stitle {
       font-size: 0.85rem; font-weight: 800; color: #0f172a;
-      text-align: center; margin: 28px 0 14px;
+      text-align: center; margin: 18px 0 10px;
       text-transform: uppercase; letter-spacing: 0.08em;
     }
 
     /* ── Score Hero ── */
     .hero {
       display: flex; align-items: center; justify-content: center;
-      gap: 24px; padding: 22px 28px;
+      gap: 24px; padding: 16px 28px;
       background: #fff; border: 2px solid ${healthColor};
-      border-radius: 16px; margin-bottom: 6px;
+      border-radius: 16px; margin-bottom: 4px;
     }
     .ring { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
     .ring svg { transform: rotate(-90deg); }
@@ -214,7 +214,7 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
     .hero-text p { font-size: 0.82rem; color: #475569; max-width: 340px; line-height: 1.5; }
 
     /* ── Flow ── */
-    .flow { display: flex; align-items: stretch; justify-content: center; gap: 4px; margin-bottom: 10px; }
+    .flow { display: flex; align-items: stretch; justify-content: center; gap: 4px; margin-bottom: 6px; }
     .fcard {
       flex: 1; max-width: 145px;
       background: #fff; border: 1.5px solid #e2e8f0; border-radius: 12px;
@@ -227,10 +227,10 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
     .farr { display: flex; align-items: center; padding: 0 2px; }
 
     /* ── Severity Row ── */
-    .srow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+    .srow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 6px; }
     .sc {
       background: #fff; border-radius: 10px;
-      padding: 14px 8px; text-align: center;
+      padding: 10px 8px; text-align: center;
       border-left: 5px solid; border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;
     }
     .sc .sn { font-size: 1.8rem; font-weight: 900; line-height: 1; }
@@ -238,7 +238,7 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
     .sc .sd { font-size: 0.58rem; color: #94a3b8; margin-top: 3px; }
 
     /* ── Insights ── */
-    .igrid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 28px; margin-bottom: 10px; }
+    .igrid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 18px; margin-bottom: 8px; }
     .icard { border-radius: 12px; overflow: hidden; border: 1.5px solid #e2e8f0; }
     .ihdr {
       padding: 7px 14px; font-size: 0.68rem; font-weight: 800;
@@ -277,7 +277,7 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
 
     /* ── Evaluation Methods ── */
     .evalmethods {
-      margin-top: 16px; padding: 14px 16px;
+      margin-top: 12px; padding: 10px 14px;
       background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
     }
     .evalmethods .stitle { margin-bottom: 8px; }
@@ -292,7 +292,7 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
 
     /* ── Footer ── */
     .ftr {
-      margin-top: 16px; padding-top: 10px;
+      margin-top: 10px; padding-top: 8px;
       border-top: 2px solid #e2e8f0;
       display: flex; justify-content: space-between;
       font-size: 0.6rem; color: #94a3b8;
@@ -305,7 +305,7 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
   <!-- HEADER -->
   <div class="hdr">
     <div class="brand">WCAG 2.1 AA Accessibility Report</div>
-    <h1>Your Accessibility<br>Health Report</h1>
+    <h1>Your Accessibility Health Report</h1>
     <div class="sub">${escapeHtml(scan.root_url)} &middot; ${reportDate}</div>
   </div>
   <div class="divider"></div>
@@ -428,9 +428,7 @@ function generateExportHtml(report: ReturnType<typeof reportService.generateRepo
       <li><strong>Engine:</strong> axe-core (Deque Systems) &mdash; an industry-standard, open-source accessibility testing engine.</li>
       <li><strong>Standard:</strong> WCAG 2.1 Level A and Level AA success criteria.</li>
       <li><strong>Scope:</strong> Automated detection of programmatically identifiable violations including color contrast, missing alt text, ARIA attribute misuse, form labeling, heading structure, keyboard accessibility, and document language.</li>
-      <li><strong>Deduplication:</strong> Shared component analysis groups repeated issues across pages (e.g., header, navigation, footer) to avoid inflated issue counts.</li>
     </ul>
-    <p><strong>Limitations:</strong> Automated testing can detect approximately 30&ndash;40% of WCAG criteria. The following areas require manual review: media alternatives (captions, audio descriptions), focus order and keyboard trap behavior, content-on-hover/focus interactions, responsive reflow, error prevention and suggestion logic, and sensory-only instructions.</p>
   </div>
 
   <!-- FOOTER -->
