@@ -1,12 +1,9 @@
 import { ScanForm } from '../components/scan/ScanForm';
 import { FeaturesSection } from '../components/features';
-import { RailwayUsage } from '../components/common/RailwayUsage';
 
 export function HomePage() {
   return (
     <div>
-      {/* Railway Usage Widget */}
-      <RailwayUsage />
       {/* Hero */}
       <div className="text-center py-12">
         <span className="inline-block px-3 py-1 text-xs font-medium text-accent bg-accent/10 rounded-full mb-6">
