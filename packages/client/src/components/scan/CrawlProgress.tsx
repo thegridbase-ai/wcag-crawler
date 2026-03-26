@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CheckCircle2, XCircle, Loader2, Clock, Lock, Unlock } from 'lucide-react';
 import { useScanStore } from '../../stores/scanStore';
 import { useSocket } from '../../hooks/useSocket';
 import { ProgressBar } from '../common/ProgressBar';
@@ -11,6 +11,8 @@ interface CrawlProgressProps {
 
 export function CrawlProgress({ scanId }: CrawlProgressProps) {
   const { joinScan, leaveScan, onEvent } = useSocket();
+  const [authStatus, setAuthStatus] = useState<{ success: boolean; message: string } | null>(null);
+
   const {
     discoveredPages,
     scannedCount,
@@ -50,6 +52,9 @@ export function CrawlProgress({ scanId }: CrawlProgressProps) {
       }),
       onEvent<ScanProgressEvent>('scan:progress', (data) => {
         updateProgress(data.scannedPages, data.totalPages);
+      }),
+      onEvent<{ success: boolean; message: string }>('scan:auth', (data) => {
+        setAuthStatus(data);
       }),
     ];
 
@@ -129,6 +134,21 @@ export function CrawlProgress({ scanId }: CrawlProgressProps) {
 
       {/* Right: Stats */}
       <div className="space-y-6">
+        {authStatus && (
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm ${
+            authStatus.success
+              ? 'bg-success/5 border-success/20 text-success'
+              : 'bg-critical/5 border-critical/20 text-critical'
+          }`}>
+            {authStatus.success ? (
+              <Unlock className="w-4 h-4 flex-shrink-0" />
+            ) : (
+              <Lock className="w-4 h-4 flex-shrink-0" />
+            )}
+            <span>{authStatus.message}</span>
+          </div>
+        )}
+
         <div className="card">
           <h3 className="font-heading font-medium mb-4">Scan Progress</h3>
 

@@ -359,11 +359,39 @@ export class CrawlerService {
       await page.waitForTimeout(2000);
 
       const finalUrl = page.url();
-      logger.info('Login completed', { finalUrl, loginUrl: auth.loginUrl });
+      const finalTitle = await page.title();
+      const cookies = await this.context!.cookies();
+      const sessionCookies = cookies.filter(c =>
+        /session|token|auth|jwt|sid|connect\.sid/i.test(c.name)
+      );
 
-      // Check if we're still on the login page (login might have failed)
-      if (finalUrl === auth.loginUrl) {
-        logger.warn('Login may have failed — still on login page after submission');
+      // Detect if login form is still visible (strong failure signal)
+      const loginFormStillVisible = await page.$('input[type="password"]:visible').then(el => !!el).catch(() => false);
+
+      if (loginFormStillVisible || finalUrl === auth.loginUrl) {
+        logger.warn('Login likely FAILED', {
+          reason: loginFormStillVisible ? 'password field still visible' : 'still on login URL',
+          finalUrl,
+          finalTitle,
+          sessionCookies: sessionCookies.length,
+        });
+        this.io?.to(this.scanId).emit('scan:auth', {
+          scanId: this.scanId,
+          success: false,
+          message: 'Login may have failed — credentials might be incorrect or form structure not recognized',
+        });
+      } else {
+        logger.info('Login likely SUCCEEDED', {
+          finalUrl,
+          finalTitle,
+          sessionCookies: sessionCookies.map(c => c.name),
+          totalCookies: cookies.length,
+        });
+        this.io?.to(this.scanId).emit('scan:auth', {
+          scanId: this.scanId,
+          success: true,
+          message: `Authenticated successfully — redirected to ${finalUrl}`,
+        });
       }
     } catch (error) {
       logger.error('Login failed', { error: (error as Error).message, loginUrl: auth.loginUrl });
