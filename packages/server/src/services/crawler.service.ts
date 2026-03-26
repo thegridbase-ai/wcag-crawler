@@ -269,35 +269,26 @@ export class CrawlerService {
       if (!usernameField || !passwordField) {
         logger.info('Login fields not visible, looking for login toggle button');
 
-        const toggleSelectors = [
-          // Bootstrap 5 dropdown toggles
-          '[data-bs-toggle="dropdown"]:has-text("Login")',
-          '[data-bs-toggle="dropdown"]:has-text("Log in")',
-          '[data-bs-toggle="dropdown"]:has-text("Sign in")',
-          // Bootstrap 4 / legacy dropdown toggles
-          '[data-toggle="dropdown"]:has-text("Login")',
-          '[data-toggle="dropdown"]:has-text("Log in")',
-          // Generic dropdown toggles
-          'button.dropdown-toggle:has-text("Login")',
-          'button.dropdown-toggle:has-text("Log in")',
-          'a.dropdown-toggle:has-text("Login")',
-          'a.dropdown-toggle:has-text("Log in")',
-          // Generic buttons/links with login text
-          'button:has-text("Login")',
-          'button:has-text("Log in")',
-          'button:has-text("Sign in")',
-          'a:has-text("Login")',
-          'a:has-text("Log in")',
-          'a:has-text("Sign in")',
-          // Scoped to nav/header
-          'nav button:has-text("Login")',
-          'nav a:has-text("Login")',
-          'header button:has-text("Login")',
-          'header a:has-text("Login")',
-          // Class-based toggles
-          '.login-toggle',
-          '#login-toggle',
-        ];
+        // Login text variants to search for (case-insensitive via Playwright :has-text)
+        const loginTexts = ['Login', 'Log in', 'Sign in', 'Log In', 'Sign In'];
+        const toggleSelectors: string[] = [];
+
+        for (const text of loginTexts) {
+          // Bootstrap 3/4/5 dropdown toggles (class is shared across all versions)
+          toggleSelectors.push(`.dropdown-toggle:has-text("${text}")`);
+          // Bootstrap 5 data attribute
+          toggleSelectors.push(`[data-bs-toggle="dropdown"]:has-text("${text}")`);
+          // Bootstrap 3/4 data attribute
+          toggleSelectors.push(`[data-toggle="dropdown"]:has-text("${text}")`);
+          // Generic buttons and links
+          toggleSelectors.push(`button:has-text("${text}")`);
+          toggleSelectors.push(`a:has-text("${text}")`);
+          // Scoped to nav/header areas
+          toggleSelectors.push(`nav :has-text("${text}")`);
+          toggleSelectors.push(`header :has-text("${text}")`);
+        }
+        // Class/ID based fallbacks
+        toggleSelectors.push('.login-toggle', '#login-toggle', '.login-btn', '#login-btn');
 
         for (const selector of toggleSelectors) {
           const toggle = await page.$(selector);
