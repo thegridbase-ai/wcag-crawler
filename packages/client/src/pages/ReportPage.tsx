@@ -3,8 +3,9 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Loader2, RefreshCw, Filter, ChevronDown, FileText, FileDown } from 'lucide-react';
 import { reportApi, scanApi } from '../lib/api';
 import { ScoreSummary } from '../components/report/ScoreSummary';
+import { PagesList } from '../components/report/PagesList';
 import { PageIssues } from '../components/report/PageIssues';
-import type { FullReport, Issue } from '../types';
+import type { FullReport, Issue, PageSummary } from '../types';
 
 type SeverityFilter = 'critical' | 'serious' | 'moderate' | 'minor';
 
@@ -26,6 +27,7 @@ export function ReportPage() {
     new Set(['critical', 'serious'])
   );
   const [exportOpen, setExportOpen] = useState(false);
+  const [pages, setPages] = useState<PageSummary[]>([]);
   const exportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,6 +81,10 @@ export function ReportPage() {
         setError(err.response?.data?.error || 'Failed to load report');
       })
       .finally(() => setLoading(false));
+
+    scanApi.get(id).then((scan) => {
+      if (scan.pages) setPages(scan.pages);
+    }).catch(() => {});
   }, [id]);
 
   // Filter and combine all issues
@@ -199,6 +205,9 @@ export function ReportPage() {
       <div className="mb-8">
         <ScoreSummary summary={report.summary} />
       </div>
+
+      {/* Pages List */}
+      <PagesList pages={pages} />
 
       {/* Filter Row */}
       <div className="flex items-center justify-between mb-6 p-4 bg-surface rounded-2xl border border-border">
