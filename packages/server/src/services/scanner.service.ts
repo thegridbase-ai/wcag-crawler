@@ -1,4 +1,4 @@
-import { chromium, Browser, BrowserContext, Page as PlaywrightPage } from 'playwright';
+import { chromium, Browser, BrowserContext, Cookie, Page as PlaywrightPage } from 'playwright';
 import AxeBuilder from '@axe-core/playwright';
 import { Server as SocketServer } from 'socket.io';
 import { ScanConfig } from '../models/scan.model.js';
@@ -45,7 +45,7 @@ export class ScannerService {
     logger.info('Scanner browser launched');
   }
 
-  async scanPages(scanId: string, config: ScanConfig): Promise<void> {
+  async scanPages(scanId: string, config: ScanConfig, cookies?: Cookie[]): Promise<void> {
     if (!this.browser) {
       throw new Error('Browser not initialized. Call initialize() first.');
     }
@@ -58,6 +58,12 @@ export class ScannerService {
       viewport: config.viewport,
       userAgent: 'A11yCrawler/1.0 (WCAG Accessibility Scanner)',
     });
+
+    // Inject authentication cookies from crawler session
+    if (cookies && cookies.length > 0) {
+      await this.context.addCookies(cookies);
+      logger.info('Injected authentication cookies into scanner context', { count: cookies.length });
+    }
 
     const pages = PageModel.findByScanId(scanId).filter(p => p.status === 'pending');
     const totalPages = pages.length;

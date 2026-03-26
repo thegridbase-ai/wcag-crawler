@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Globe, ChevronDown, ChevronUp, Loader2, ArrowRight } from 'lucide-react';
+import { Globe, ChevronDown, ChevronUp, Loader2, ArrowRight, Lock } from 'lucide-react';
 import { scanApi } from '../../lib/api';
 import { scanStorage } from '../../lib/storage';
 import { DEFAULT_SCAN_CONFIG, VIEWPORT_PRESETS } from '../../lib/constants';
@@ -21,6 +21,8 @@ export function ScanForm() {
     viewport: DEFAULT_SCAN_CONFIG.viewport,
     excludePatterns: [],
   });
+  const [authEnabled, setAuthEnabled] = useState(false);
+  const [authFields, setAuthFields] = useState({ loginUrl: '', username: '', password: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +42,13 @@ export function ScanForm() {
 
     setIsLoading(true);
     try {
-      const result = await scanApi.create(url, config);
+      const finalConfig = {
+        ...config,
+        authentication: authEnabled && authFields.loginUrl && authFields.username
+          ? authFields
+          : null,
+      };
+      const result = await scanApi.create(url, finalConfig);
       scanStorage.add({
         id: result.id,
         url: url,
@@ -182,6 +190,66 @@ export function ScanForm() {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="border border-border rounded-xl p-4 space-y-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={authEnabled}
+                onChange={(e) => setAuthEnabled(e.target.checked)}
+                className="accent-primary w-4 h-4"
+              />
+              <Lock className="w-4 h-4 text-foreground-muted" />
+              <div>
+                <span className="text-sm font-medium text-foreground">Scan Behind Login</span>
+                <p className="text-xs text-foreground-muted">
+                  Authenticate before scanning to access protected pages
+                </p>
+              </div>
+            </label>
+
+            {authEnabled && (
+              <div className="space-y-3 pl-7">
+                <div>
+                  <label className="block text-xs font-medium text-foreground-muted mb-1">Login Page URL</label>
+                  <input
+                    type="url"
+                    value={authFields.loginUrl}
+                    onChange={(e) => setAuthFields({ ...authFields, loginUrl: e.target.value })}
+                    placeholder="https://example.com/login"
+                    className="input text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-foreground-muted mb-1">Username / Email</label>
+                    <input
+                      type="text"
+                      value={authFields.username}
+                      onChange={(e) => setAuthFields({ ...authFields, username: e.target.value })}
+                      placeholder="user@example.com"
+                      className="input text-sm"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground-muted mb-1">Password</label>
+                    <input
+                      type="password"
+                      value={authFields.password}
+                      onChange={(e) => setAuthFields({ ...authFields, password: e.target.value })}
+                      placeholder="••••••••"
+                      className="input text-sm"
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-foreground-muted/60">
+                  Credentials are sent to the server for login only and are not stored.
+                </p>
+              </div>
+            )}
           </div>
 
           <div>

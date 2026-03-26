@@ -1,4 +1,4 @@
-import { chromium, Browser, Page, BrowserContext } from 'playwright';
+import { chromium, Browser, Page, BrowserContext, Cookie } from 'playwright';
 import { Server as SocketServer } from 'socket.io';
 import { ScanConfig } from '../models/scan.model.js';
 import { PageModel } from '../models/page.model.js';
@@ -25,6 +25,7 @@ export class CrawlerService {
   private isCancelled: boolean = false;
   private patternCounts: Map<string, number> = new Map();
   private readonly MAX_URLS_PER_PATTERN = 3;
+  private authCookies: Cookie[] = [];
 
   async initialize(io: SocketServer): Promise<void> {
     this.io = io;
@@ -58,6 +59,11 @@ export class CrawlerService {
     this.context.setDefaultNavigationTimeout(30000);
     this.context.setDefaultTimeout(30000);
 
+    // Perform form-based login if authentication is configured
+    if (config.authentication) {
+      await this.performLogin(config.authentication);
+    }
+
     this.queue.push({ url: normalizedRoot, depth: 0 });
     const discoveredUrls: string[] = [];
 
@@ -79,6 +85,9 @@ export class CrawlerService {
         await this.delay(config.delay);
       }
     }
+
+    // Save cookies before closing so scanner can reuse the authenticated session
+    this.authCookies = await this.context.cookies();
 
     await this.context.close();
     this.context = null;
@@ -202,6 +211,128 @@ export class CrawlerService {
 
         this.queue.push({ url: normalized, depth: currentDepth + 1 });
       }
+    }
+  }
+
+  getAuthCookies(): Cookie[] {
+    return this.authCookies;
+  }
+
+  private async performLogin(auth: { loginUrl: string; username: string; password: string }): Promise<void> {
+    if (!this.context) return;
+
+    const page = await this.context.newPage();
+    try {
+      logger.info('Performing form-based login', { loginUrl: auth.loginUrl });
+
+      await page.goto(auth.loginUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForTimeout(1000);
+
+      // Common username/email field selectors (tried in order)
+      const usernameSelectors = [
+        'input[type="email"]',
+        'input[name="email"]',
+        'input[name="username"]',
+        'input[name="user"]',
+        'input[name="login"]',
+        'input[id="email"]',
+        'input[id="username"]',
+        'input[id="login"]',
+        'input[autocomplete="username"]',
+        'input[autocomplete="email"]',
+        'input[type="text"]:first-of-type',
+      ];
+
+      // Common password field selectors
+      const passwordSelectors = [
+        'input[type="password"]',
+        'input[name="password"]',
+        'input[name="pass"]',
+        'input[id="password"]',
+        'input[autocomplete="current-password"]',
+      ];
+
+      // Find and fill username field
+      let usernameField = null;
+      for (const selector of usernameSelectors) {
+        const el = await page.$(selector);
+        if (el && await el.isVisible()) {
+          usernameField = el;
+          break;
+        }
+      }
+
+      if (!usernameField) {
+        logger.warn('Could not find username/email input field on login page');
+        await page.close();
+        return;
+      }
+
+      // Find and fill password field
+      let passwordField = null;
+      for (const selector of passwordSelectors) {
+        const el = await page.$(selector);
+        if (el && await el.isVisible()) {
+          passwordField = el;
+          break;
+        }
+      }
+
+      if (!passwordField) {
+        logger.warn('Could not find password input field on login page');
+        await page.close();
+        return;
+      }
+
+      // Fill credentials
+      await usernameField.fill(auth.username);
+      await passwordField.fill(auth.password);
+
+      // Submit the form — try clicking a submit button, fallback to Enter key
+      const submitSelectors = [
+        'button[type="submit"]',
+        'input[type="submit"]',
+        'button:has-text("Log in")',
+        'button:has-text("Login")',
+        'button:has-text("Sign in")',
+        'button:has-text("Submit")',
+      ];
+
+      let submitted = false;
+      for (const selector of submitSelectors) {
+        const btn = await page.$(selector);
+        if (btn && await btn.isVisible()) {
+          await Promise.all([
+            page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {}),
+            btn.click(),
+          ]);
+          submitted = true;
+          break;
+        }
+      }
+
+      if (!submitted) {
+        // Fallback: press Enter on password field
+        await Promise.all([
+          page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {}),
+          passwordField.press('Enter'),
+        ]);
+      }
+
+      // Wait for post-login page to settle
+      await page.waitForTimeout(2000);
+
+      const finalUrl = page.url();
+      logger.info('Login completed', { finalUrl, loginUrl: auth.loginUrl });
+
+      // Check if we're still on the login page (login might have failed)
+      if (finalUrl === auth.loginUrl) {
+        logger.warn('Login may have failed — still on login page after submission');
+      }
+    } catch (error) {
+      logger.error('Login failed', { error: (error as Error).message, loginUrl: auth.loginUrl });
+    } finally {
+      await page.close();
     }
   }
 

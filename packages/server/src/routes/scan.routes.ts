@@ -31,6 +31,7 @@ const scanConfigSchema = z.object({
       height: z.number().default(720),
     }).default({ width: 1280, height: 720 }),
     authentication: z.object({
+      loginUrl: z.string().url(),
       username: z.string(),
       password: z.string(),
     }).nullable().default(null),
@@ -162,6 +163,9 @@ async function runScan(scanId: string, rootUrl: string, config: ScanConfig, io: 
 
   ScanModel.updateCounts(scanId, { total_pages: discoveredUrls.length });
 
+  // Grab authenticated cookies before closing crawler
+  const authCookies = crawlerService.getAuthCookies();
+
   // Close crawler browser before starting scanner to free memory
   await crawlerService.close();
 
@@ -170,7 +174,7 @@ async function runScan(scanId: string, rootUrl: string, config: ScanConfig, io: 
   io.to(scanId).emit('scan:status', { scanId, status: 'scanning' });
 
   await scannerService.initialize(io);
-  await scannerService.scanPages(scanId, config);
+  await scannerService.scanPages(scanId, config, authCookies.length > 0 ? authCookies : undefined);
 
   // Update scanned pages count
   const scannedCount = PageModel.countScannedByScanId(scanId);
