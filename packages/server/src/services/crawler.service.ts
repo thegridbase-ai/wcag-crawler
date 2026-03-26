@@ -270,22 +270,33 @@ export class CrawlerService {
         logger.info('Login fields not visible, looking for login toggle button');
 
         const toggleSelectors = [
+          // Bootstrap 5 dropdown toggles
+          '[data-bs-toggle="dropdown"]:has-text("Login")',
+          '[data-bs-toggle="dropdown"]:has-text("Log in")',
+          '[data-bs-toggle="dropdown"]:has-text("Sign in")',
+          // Bootstrap 4 / legacy dropdown toggles
+          '[data-toggle="dropdown"]:has-text("Login")',
+          '[data-toggle="dropdown"]:has-text("Log in")',
+          // Generic dropdown toggles
+          'button.dropdown-toggle:has-text("Login")',
+          'button.dropdown-toggle:has-text("Log in")',
+          'a.dropdown-toggle:has-text("Login")',
+          'a.dropdown-toggle:has-text("Log in")',
+          // Generic buttons/links with login text
           'button:has-text("Login")',
           'button:has-text("Log in")',
           'button:has-text("Sign in")',
           'a:has-text("Login")',
           'a:has-text("Log in")',
           'a:has-text("Sign in")',
-          '[data-toggle="dropdown"]:has-text("Login")',
-          '[data-toggle="dropdown"]:has-text("Log in")',
-          '.login-toggle',
-          '#login-toggle',
-          'button.dropdown-toggle:has-text("Login")',
-          'a.dropdown-toggle:has-text("Login")',
+          // Scoped to nav/header
           'nav button:has-text("Login")',
           'nav a:has-text("Login")',
           'header button:has-text("Login")',
           'header a:has-text("Login")',
+          // Class-based toggles
+          '.login-toggle',
+          '#login-toggle',
         ];
 
         for (const selector of toggleSelectors) {
@@ -293,7 +304,10 @@ export class CrawlerService {
           if (toggle && await toggle.isVisible()) {
             logger.info('Found login toggle button, clicking', { selector });
             await toggle.click();
-            await page.waitForTimeout(800);
+            // Wait for dropdown animation and DOM update
+            await page.waitForTimeout(1000);
+            // Also wait for a password field to appear (confirms dropdown opened)
+            await page.waitForSelector('input[type="password"]', { timeout: 3000 }).catch(() => {});
             break;
           }
         }
