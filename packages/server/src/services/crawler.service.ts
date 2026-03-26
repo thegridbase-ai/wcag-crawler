@@ -252,30 +252,61 @@ export class CrawlerService {
         'input[autocomplete="current-password"]',
       ];
 
-      // Find and fill username field
-      let usernameField = null;
-      for (const selector of usernameSelectors) {
-        const el = await page.$(selector);
-        if (el && await el.isVisible()) {
-          usernameField = el;
-          break;
+      // Helper: find a visible element from a list of selectors
+      const findVisible = async (selectors: string[]) => {
+        for (const selector of selectors) {
+          const el = await page.$(selector);
+          if (el && await el.isVisible()) return el;
         }
+        return null;
+      };
+
+      // First attempt: look for visible login fields directly
+      let usernameField = await findVisible(usernameSelectors);
+      let passwordField = await findVisible(passwordSelectors);
+
+      // If fields are hidden, try clicking a login toggle/dropdown button first
+      if (!usernameField || !passwordField) {
+        logger.info('Login fields not visible, looking for login toggle button');
+
+        const toggleSelectors = [
+          'button:has-text("Login")',
+          'button:has-text("Log in")',
+          'button:has-text("Sign in")',
+          'a:has-text("Login")',
+          'a:has-text("Log in")',
+          'a:has-text("Sign in")',
+          '[data-toggle="dropdown"]:has-text("Login")',
+          '[data-toggle="dropdown"]:has-text("Log in")',
+          '.login-toggle',
+          '#login-toggle',
+          'button.dropdown-toggle:has-text("Login")',
+          'a.dropdown-toggle:has-text("Login")',
+          'nav button:has-text("Login")',
+          'nav a:has-text("Login")',
+          'header button:has-text("Login")',
+          'header a:has-text("Login")',
+        ];
+
+        for (const selector of toggleSelectors) {
+          const toggle = await page.$(selector);
+          if (toggle && await toggle.isVisible()) {
+            logger.info('Found login toggle button, clicking', { selector });
+            await toggle.click();
+            await page.waitForTimeout(800);
+            break;
+          }
+        }
+
+        // Retry finding fields after opening dropdown
+        if (!usernameField) usernameField = await findVisible(usernameSelectors);
+        if (!passwordField) passwordField = await findVisible(passwordSelectors);
       }
 
       if (!usernameField) {
         logger.warn('Could not find username/email input field on login page');
         await page.close();
         return;
-      }
-
-      // Find and fill password field
-      let passwordField = null;
-      for (const selector of passwordSelectors) {
-        const el = await page.$(selector);
-        if (el && await el.isVisible()) {
-          passwordField = el;
-          break;
-        }
       }
 
       if (!passwordField) {
