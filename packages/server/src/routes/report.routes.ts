@@ -84,7 +84,301 @@ export function createReportRoutes(): Router {
     }
   });
 
+  // GET /api/reports/:scanId/fix-report - Generate AI-friendly fix instructions
+  router.get('/:scanId/fix-report', (req: Request, res: Response) => {
+    try {
+      const scan = ScanModel.findById(req.params.scanId);
+      if (!scan) {
+        res.status(404).json({ error: 'Scan not found' });
+        return;
+      }
+
+      if (scan.status !== 'complete') {
+        res.status(400).json({ error: 'Scan not complete', status: scan.status });
+        return;
+      }
+
+      const report = reportService.generateReport(scan.id);
+      if (!report) {
+        res.status(500).json({ error: 'Failed to generate report' });
+        return;
+      }
+
+      const markdown = generateFixReportMarkdown(report);
+      const hostname = new URL(scan.root_url).hostname;
+      res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="fix-report-${hostname}.md"`);
+      res.send(markdown);
+    } catch (error) {
+      logger.error('Failed to generate fix report', { error: (error as Error).message });
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   return router;
+}
+
+function generateFixReportMarkdown(report: ReturnType<typeof reportService.generateReport>): string {
+  if (!report) return '';
+
+  const { scan, summary, sharedComponents, pageSpecificIssues } = report;
+  const hostname = new URL(scan.root_url).hostname;
+  const lines: string[] = [];
+
+  lines.push(`# Accessibility Fix Report — ${hostname}`);
+  lines.push('');
+  lines.push(`**Site:** ${scan.root_url}`);
+  lines.push(`**Score:** ${summary.score}/100`);
+  lines.push(`**Pages scanned:** ${summary.totalPages}`);
+  lines.push(`**Total issues:** ${summary.totalIssuesDeduplicated} unique (${summary.totalIssuesRaw} raw)`);
+  lines.push(`**Breakdown:** ${summary.bySeverity.critical} critical, ${summary.bySeverity.serious} serious, ${summary.bySeverity.moderate} moderate, ${summary.bySeverity.minor} minor`);
+  lines.push('');
+  lines.push(`> This report is structured for AI-assisted fixing. Each issue includes the exact CSS selector, the broken HTML, WCAG criteria, and step-by-step fix instructions. Feed this file to Claude AI or any code assistant to get precise fixes.`);
+  lines.push('');
+  lines.push(`---`);
+  lines.push('');
+
+  // Fix suggestions database (server-side version)
+  const fixDb: Record<string, { problem: string; solution: string; before: string; after: string }> = {
+    'image-alt': { problem: 'Image missing alt attribute', solution: 'Add alt="descriptive text" to the <img> tag. Use alt="" for decorative images.', before: '<img src="logo.png">', after: '<img src="logo.png" alt="Company Logo">' },
+    'label': { problem: 'Form input missing label', solution: 'Add a <label for="inputId"> element associated with the input, or add aria-label attribute.', before: '<input type="text" name="email">', after: '<label for="email">Email</label>\n<input type="text" id="email" name="email">' },
+    'link-name': { problem: 'Link has no discernible text', solution: 'Add text content inside the <a> tag, or add aria-label attribute.', before: '<a href="/profile"><i class="icon"></i></a>', after: '<a href="/profile" aria-label="View profile"><i class="icon" aria-hidden="true"></i></a>' },
+    'button-name': { problem: 'Button has no discernible text', solution: 'Add text content inside the <button>, or add aria-label attribute.', before: '<button><i class="icon-search"></i></button>', after: '<button aria-label="Search"><i class="icon-search" aria-hidden="true"></i></button>' },
+    'color-contrast': { problem: 'Insufficient color contrast', solution: 'Increase the contrast ratio to at least 4.5:1 for normal text, 3:1 for large text. Change the text color to be darker or the background to be lighter.', before: '<span style="color: #999">Light text</span>', after: '<span style="color: #595959">Darker text (4.5:1 ratio)</span>' },
+    'heading-order': { problem: 'Heading levels are skipped', solution: 'Use heading levels sequentially (h1 -> h2 -> h3). Do not skip from h1 to h3.', before: '<h1>Title</h1>\n<h3>Section</h3>', after: '<h1>Title</h1>\n<h2>Section</h2>' },
+    'region': { problem: 'Content not inside a landmark region', solution: 'Wrap content in a semantic landmark: <main>, <header>, <nav>, <aside>, or <footer>.', before: '<div class="content">...</div>', after: '<main class="content">...</main>' },
+    'landmark-one-main': { problem: 'Page has no <main> landmark', solution: 'Add a <main> element to wrap the primary page content.', before: '<div class="content">...</div>', after: '<main class="content">...</main>' },
+    'select-name': { problem: 'Select element missing accessible name', solution: 'Add a <label for="selectId"> or aria-label to the select element.', before: '<select name="country">...</select>', after: '<label for="country">Country</label>\n<select id="country" name="country">...</select>' },
+    'html-has-lang': { problem: 'HTML element missing lang attribute', solution: 'Add lang="en" (or appropriate language code) to the <html> element.', before: '<html>', after: '<html lang="en">' },
+    'bypass': { problem: 'No skip navigation link', solution: 'Add a "Skip to main content" link as the first focusable element on the page.', before: '<body>\n  <nav>...</nav>', after: '<body>\n  <a href="#main" class="skip-link">Skip to main content</a>\n  <nav>...</nav>\n  <main id="main">...</main>' },
+    'duplicate-id': { problem: 'Duplicate id attributes on page', solution: 'Make each id unique. Rename duplicates to distinct values.', before: '<div id="content">A</div>\n<div id="content">B</div>', after: '<div id="content-1">A</div>\n<div id="content-2">B</div>' },
+    'frame-title': { problem: 'iframe missing title attribute', solution: 'Add a title attribute describing the iframe content.', before: '<iframe src="video.html"></iframe>', after: '<iframe src="video.html" title="Product demo video"></iframe>' },
+    'meta-viewport': { problem: 'Viewport prevents user scaling', solution: 'Remove user-scalable=no and maximum-scale=1 from the viewport meta tag.', before: '<meta name="viewport" content="width=device-width, user-scalable=no">', after: '<meta name="viewport" content="width=device-width, initial-scale=1">' },
+    'empty-heading': { problem: 'Heading element is empty', solution: 'Add text content to the heading, or remove it if unnecessary.', before: '<h2></h2>', after: '<h2>Section Title</h2>' },
+    'aria-hidden-focus': { problem: 'Focusable element inside aria-hidden', solution: 'Either remove aria-hidden from the parent, or add tabindex="-1" to the focusable child.', before: '<div aria-hidden="true"><button>Click</button></div>', after: '<div aria-hidden="true"><button tabindex="-1">Click</button></div>' },
+    'document-title': { problem: 'Page missing <title> element', solution: 'Add a descriptive <title> in the <head> section.', before: '<head><meta charset="UTF-8"></head>', after: '<head><meta charset="UTF-8"><title>Page Title - Site</title></head>' },
+    'aria-valid-attr-value': { problem: 'ARIA attribute has invalid value', solution: 'Use valid ARIA values. Boolean attributes use "true"/"false", not "yes"/"no".', before: '<div aria-hidden="yes">', after: '<div aria-hidden="true">' },
+    'aria-valid-attr': { problem: 'Invalid ARIA attribute name', solution: 'Use a valid ARIA attribute. Check spelling (e.g., aria-labelledby not aria-labelled).', before: '<button aria-labelled="menu">', after: '<button aria-labelledby="menu-label">' },
+    'aria-roles': { problem: 'Invalid ARIA role', solution: 'Use a valid WAI-ARIA role value.', before: '<div role="modal">', after: '<div role="dialog" aria-modal="true">' },
+    'list': { problem: 'List contains non-list children', solution: 'Ensure <ul>/<ol> only contain <li> elements.', before: '<ul><div>Item</div></ul>', after: '<ul><li>Item</li></ul>' },
+    'listitem': { problem: '<li> not inside <ul> or <ol>', solution: 'Wrap <li> elements in a <ul> or <ol>.', before: '<div><li>Item</li></div>', after: '<ul><li>Item</li></ul>' },
+    'nested-interactive': { problem: 'Nested interactive elements', solution: 'Remove the nested interactive element. A button inside a link (or vice versa) is invalid.', before: '<button><a href="/link">Click</a></button>', after: '<a href="/link" class="button-style">Click</a>' },
+    'scrollable-region-focusable': { problem: 'Scrollable region not keyboard-accessible', solution: 'Add tabindex="0" to make the scrollable container focusable.', before: '<div style="overflow:auto">', after: '<div tabindex="0" style="overflow:auto">' },
+    'input-button-name': { problem: 'Input button missing text', solution: 'Add a value attribute for the button text.', before: '<input type="submit">', after: '<input type="submit" value="Submit Form">' },
+    'autocomplete-valid': { problem: 'Invalid autocomplete attribute', solution: 'Use valid autocomplete tokens: name, email, tel, street-address, etc.', before: '<input autocomplete="place-city">', after: '<input autocomplete="address-level2">' },
+    'valid-lang': { problem: 'Invalid lang attribute value', solution: 'Use a valid BCP 47 language code.', before: '<html lang="english">', after: '<html lang="en">' },
+    'tabindex': { problem: 'tabindex greater than 0', solution: 'Use tabindex="0" to add to natural tab order, or tabindex="-1" for programmatic focus.', before: '<div tabindex="5">', after: '<div tabindex="0">' },
+  };
+
+  // --- SHARED COMPONENTS ---
+  if (sharedComponents.length > 0) {
+    lines.push(`## Shared Component Issues`);
+    lines.push('');
+    lines.push(`These issues appear in shared/repeated components (header, nav, footer) across multiple pages. **Fix once, fix everywhere.**`);
+    lines.push('');
+
+    for (const comp of sharedComponents) {
+      if (comp.issues.length === 0) continue;
+
+      lines.push(`### ${comp.label} (${comp.region})`);
+      lines.push(`Affects **${comp.pageCount} pages**`);
+      lines.push('');
+
+      for (const issue of comp.issues) {
+        const fix = fixDb[issue.ruleId];
+        const impactEmoji = issue.impact === 'critical' ? '[CRITICAL]' : issue.impact === 'serious' ? '[SERIOUS]' : issue.impact === 'moderate' ? '[MODERATE]' : '[MINOR]';
+
+        lines.push(`#### ${impactEmoji} ${issue.ruleId}: ${issue.description}`);
+        lines.push('');
+        lines.push(`- **Severity:** ${issue.impact}`);
+        if (issue.wcagCriteria.length > 0) {
+          lines.push(`- **WCAG:** ${issue.wcagCriteria.map(c => `SC ${c}`).join(', ')}`);
+        }
+        lines.push(`- **Selector:** \`${issue.target}\``);
+        lines.push(`- **Affects:** ${issue.affectedPages} pages`);
+        if (issue.affectedPageUrls && issue.affectedPageUrls.length > 0) {
+          const urlsToShow = issue.affectedPageUrls.slice(0, 5);
+          for (const url of urlsToShow) {
+            lines.push(`  - ${url}`);
+          }
+          if (issue.affectedPageUrls.length > 5) {
+            lines.push(`  - ...and ${issue.affectedPageUrls.length - 5} more`);
+          }
+        }
+        lines.push('');
+
+        if (issue.htmlSnippet) {
+          lines.push(`**Current HTML (broken):**`);
+          lines.push('```html');
+          lines.push(issue.htmlSnippet);
+          lines.push('```');
+          lines.push('');
+        }
+
+        if (fix) {
+          lines.push(`**Problem:** ${fix.problem}`);
+          lines.push('');
+          lines.push(`**How to fix:** ${fix.solution}`);
+          lines.push('');
+          lines.push(`**Example fix:**`);
+          lines.push('```html');
+          lines.push(`<!-- Before (wrong) -->`);
+          lines.push(fix.before);
+          lines.push('');
+          lines.push(`<!-- After (correct) -->`);
+          lines.push(fix.after);
+          lines.push('```');
+        } else {
+          lines.push(`**Reference:** ${issue.helpUrl}`);
+        }
+
+        lines.push('');
+        lines.push(`---`);
+        lines.push('');
+      }
+    }
+  }
+
+  // --- PAGE-SPECIFIC ISSUES ---
+  if (pageSpecificIssues.length > 0) {
+    lines.push(`## Page-Specific Issues`);
+    lines.push('');
+    lines.push(`These issues are unique to specific pages.`);
+    lines.push('');
+
+    // Group by URL path pattern to help identify files
+    for (const page of pageSpecificIssues) {
+      if (page.issues.length === 0) continue;
+
+      const urlPath = (() => {
+        try { return new URL(page.url).pathname; } catch { return page.url; }
+      })();
+
+      // Try to guess the file path from URL
+      const guessedFile = guessFilePath(urlPath);
+
+      lines.push(`### Page: ${page.title || urlPath}`);
+      lines.push(`- **URL:** ${page.url}`);
+      if (guessedFile) {
+        lines.push(`- **Likely file:** \`${guessedFile}\``);
+      }
+      lines.push(`- **Issues:** ${page.issueCount}`);
+      lines.push('');
+
+      // Group issues by rule for cleaner output
+      const issuesByRule = new Map<string, typeof page.issues>();
+      for (const issue of page.issues) {
+        const key = issue.ruleId;
+        if (!issuesByRule.has(key)) {
+          issuesByRule.set(key, []);
+        }
+        issuesByRule.get(key)!.push(issue);
+      }
+
+      for (const [ruleId, ruleIssues] of issuesByRule) {
+        const first = ruleIssues[0];
+        const fix = fixDb[ruleId];
+        const impactEmoji = first.impact === 'critical' ? '[CRITICAL]' : first.impact === 'serious' ? '[SERIOUS]' : first.impact === 'moderate' ? '[MODERATE]' : '[MINOR]';
+
+        lines.push(`#### ${impactEmoji} ${ruleId}: ${first.description}`);
+        lines.push('');
+        lines.push(`- **Severity:** ${first.impact}`);
+        if (first.wcagCriteria.length > 0) {
+          lines.push(`- **WCAG:** ${first.wcagCriteria.map(c => `SC ${c}`).join(', ')}`);
+        }
+        lines.push(`- **Occurrences on this page:** ${ruleIssues.length}`);
+        lines.push('');
+
+        // Show each occurrence with selector and HTML
+        for (let i = 0; i < ruleIssues.length; i++) {
+          const issue = ruleIssues[i];
+          if (ruleIssues.length > 1) {
+            lines.push(`**Occurrence ${i + 1}:**`);
+          }
+          lines.push(`- Selector: \`${issue.target}\``);
+          if (issue.htmlSnippet) {
+            lines.push('```html');
+            lines.push(issue.htmlSnippet);
+            lines.push('```');
+          }
+          if (issue.failureSummary && !fix) {
+            lines.push(`- Fix hint: ${issue.failureSummary}`);
+          }
+          lines.push('');
+        }
+
+        if (fix) {
+          lines.push(`**How to fix:** ${fix.solution}`);
+          lines.push('');
+          lines.push(`**Example:**`);
+          lines.push('```html');
+          lines.push(`<!-- Before -->`);
+          lines.push(fix.before);
+          lines.push(`<!-- After -->`);
+          lines.push(fix.after);
+          lines.push('```');
+          lines.push('');
+        }
+
+        lines.push(`---`);
+        lines.push('');
+      }
+    }
+  }
+
+  // --- SUMMARY TABLE ---
+  lines.push(`## Quick Reference: All Issues by Rule`);
+  lines.push('');
+  lines.push(`| Rule | Severity | Count | Description |`);
+  lines.push(`|------|----------|-------|-------------|`);
+
+  const allIssues = [
+    ...sharedComponents.flatMap(c => c.issues),
+    ...pageSpecificIssues.flatMap(p => p.issues),
+  ];
+  const ruleMap = new Map<string, { count: number; impact: string; desc: string }>();
+  for (const issue of allIssues) {
+    const existing = ruleMap.get(issue.ruleId);
+    if (!existing) {
+      ruleMap.set(issue.ruleId, { count: 1, impact: issue.impact, desc: issue.description });
+    } else {
+      existing.count++;
+    }
+  }
+  const sortedRules = [...ruleMap.entries()].sort((a, b) => {
+    const order: Record<string, number> = { critical: 0, serious: 1, moderate: 2, minor: 3 };
+    const diff = (order[a[1].impact] ?? 4) - (order[b[1].impact] ?? 4);
+    return diff !== 0 ? diff : b[1].count - a[1].count;
+  });
+  for (const [ruleId, info] of sortedRules) {
+    lines.push(`| ${ruleId} | ${info.impact} | ${info.count} | ${info.desc} |`);
+  }
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+function guessFilePath(urlPath: string): string | null {
+  const path = urlPath.replace(/\/$/, '') || '/index';
+
+  // Common web framework patterns
+  const patterns: Array<{ match: RegExp; template: (m: RegExpMatchArray) => string }> = [
+    // JSP: /path/page.action or /path/page.do -> WEB-INF/jsp/path/page.jsp
+    { match: /^(.+)\.(action|do)$/, template: (m) => `WEB-INF/jsp${m[1]}.jsp` },
+    // JSF: /path/page.jsf or .xhtml -> /path/page.xhtml
+    { match: /^(.+)\.(jsf)$/, template: (m) => `${m[1]}.xhtml` },
+    // PHP: /path/page -> /path/page.php
+    { match: /^(\/[^.]+)$/, template: (m) => `${m[1]}.php or ${m[1]}.jsp or ${m[1]}/index.html` },
+    // Direct file references
+    { match: /^(.+\.(html|htm|php|jsp|aspx|cshtml))$/, template: (m) => m[1] },
+  ];
+
+  for (const p of patterns) {
+    const m = path.match(p.match);
+    if (m) return p.template(m);
+  }
+
+  return null;
 }
 
 function generateExportHtml(report: ReturnType<typeof reportService.generateReport>): string {

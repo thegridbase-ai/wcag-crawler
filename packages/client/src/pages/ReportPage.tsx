@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Loader2, RefreshCw, Filter, ChevronDown, FileText, FileDown } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, RefreshCw, Filter, ChevronDown, FileText, FileDown, Wrench } from 'lucide-react';
 import { reportApi, scanApi } from '../lib/api';
 import { ScoreSummary } from '../components/report/ScoreSummary';
 import { PagesList } from '../components/report/PagesList';
@@ -194,6 +194,15 @@ export function ReportPage() {
                 >
                   <FileDown className="w-4 h-4 text-foreground-muted" />
                   Export as PDF
+                </a>
+                <a
+                  href={reportApi.fixReportUrl(report.scan.id)}
+                  download
+                  className="flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors border-t border-border"
+                  onClick={() => setExportOpen(false)}
+                >
+                  <Wrench className="w-4 h-4 text-foreground-muted" />
+                  Fix Report
                 </a>
               </div>
             )}
