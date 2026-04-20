@@ -189,6 +189,49 @@ export function IssueCard({ issue, showAffectedPages = false }: IssueCardProps) 
                 </div>
               )}
             </div>
+
+            {/* Affected pages shown inline */}
+            {showAffectedPages && issue.affectedPageUrls && issue.affectedPageUrls.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <button
+                  onClick={() => setShowPages(!showPages)}
+                  className="flex items-center gap-2 text-xs text-foreground-muted hover:text-foreground transition-colors"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span className="font-medium">
+                    Affected Pages ({issue.affectedPageUrls.length})
+                  </span>
+                  {showPages ? (
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  )}
+                </button>
+                {showPages && (
+                  <div className="mt-2 space-y-0.5 max-h-48 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.2) transparent' }}>
+                    {issue.affectedPageUrls.map((url, i) => {
+                      let displayPath = url;
+                      try {
+                        const parsed = new URL(url);
+                        displayPath = parsed.pathname + parsed.search;
+                      } catch { /* use full URL */ }
+                      return (
+                        <a
+                          key={i}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-foreground-muted hover:text-foreground hover:bg-muted/50 transition-colors group break-all"
+                        >
+                          <span className="flex-1">{displayPath}</span>
+                          <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-1">
@@ -364,57 +407,6 @@ export function IssueCard({ issue, showAffectedPages = false }: IssueCardProps) 
               );
             })()}
 
-            {/* Affected Pages */}
-            {issue.affectedPageUrls && issue.affectedPageUrls.length > 0 && (
-              <div className="border-t border-border">
-                <button
-                  onClick={() => setShowPages(!showPages)}
-                  className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-foreground-muted" />
-                    <span className="text-xs font-medium text-foreground-muted uppercase tracking-wide">
-                      Affected Pages
-                    </span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
-                      {issue.affectedPageUrls.length}
-                    </span>
-                  </div>
-                  {showPages ? (
-                    <ChevronDown className="w-4 h-4 text-foreground-muted" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-foreground-muted" />
-                  )}
-                </button>
-
-                {showPages && (
-                  <div className="px-4 pb-4 space-y-1 max-h-64 overflow-y-auto">
-                    {issue.affectedPageUrls.map((url, i) => {
-                      let displayPath = url;
-                      try {
-                        const parsed = new URL(url);
-                        displayPath = parsed.pathname + parsed.search;
-                      } catch {
-                        // Use full URL
-                      }
-
-                      return (
-                        <a
-                          key={i}
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-foreground-muted hover:text-foreground hover:bg-muted transition-colors group"
-                        >
-                          <span className="truncate flex-1">{displayPath}</span>
-                          <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                        </a>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         );
       })()}
