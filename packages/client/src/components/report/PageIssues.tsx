@@ -184,7 +184,7 @@ export function PageIssues({ pages }: PageIssuesProps) {
                 </div>
               </div>
 
-              <span className={`text-sm font-medium px-3 py-1 rounded-full ${
+              <span className={`text-sm font-medium px-3 py-1 rounded-full whitespace-nowrap flex-shrink-0 ${
                 group.uniqueIssueCount > 0
                   ? 'bg-critical/10 text-critical'
                   : 'bg-muted text-foreground-muted'

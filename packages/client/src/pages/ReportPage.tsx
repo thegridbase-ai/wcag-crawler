@@ -99,7 +99,7 @@ export function ReportPage() {
       ...report.sharedComponents.map((comp) => ({
         url: comp.id,
         title: `Shared: ${comp.label}`,
-        sourceUrl: comp.pageUrls?.length ? `Appears on: ${comp.pageUrls.map(u => { try { return new URL(u).pathname; } catch { return u; } }).join(', ')}` : null,
+        sourceUrl: null,
         issues: filterIssues(comp.issues),
         issueCount: filterIssues(comp.issues).length,
         isShared: true,
