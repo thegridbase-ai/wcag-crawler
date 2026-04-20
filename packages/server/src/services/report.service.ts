@@ -33,6 +33,7 @@ export interface SharedComponentReport {
   label: string;
   region: string;
   pageCount: number;
+  pageUrls: string[];
   issues: Array<{
     ruleId: string;
     impact: string;
@@ -49,6 +50,7 @@ export interface SharedComponentReport {
 export interface PageIssueReport {
   url: string;
   title: string | null;
+  sourceUrl: string | null;
   issueCount: number;
   issues: Array<{
     ruleId: string;
@@ -200,6 +202,7 @@ export class ReportService {
         label: component.label,
         region: component.region,
         pageCount: component.page_count,
+        pageUrls: component.page_urls || [],
         issues: Array.from(uniqueIssues.values()).map(issue => ({
           ruleId: issue.axe_rule_id,
           impact: issue.impact,
@@ -217,7 +220,7 @@ export class ReportService {
     return reports;
   }
 
-  private buildPageSpecificReports(pages: Array<{ id: string; url: string; title: string | null }>, issues: Issue[]): PageIssueReport[] {
+  private buildPageSpecificReports(pages: Array<{ id: string; url: string; title: string | null; source_url?: string | null }>, issues: Issue[]): PageIssueReport[] {
     const reports: PageIssueReport[] = [];
 
     // Group page-specific issues by page
@@ -238,6 +241,7 @@ export class ReportService {
       reports.push({
         url: page.url,
         title: page.title,
+        sourceUrl: page.source_url || null,
         issueCount: pageIssues.length,
         issues: pageIssues.map(issue => ({
           ruleId: issue.axe_rule_id,

@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS pages (
   http_status INTEGER,
   load_time_ms INTEGER,
   scanned_at DATETIME,
-  regions_fingerprint JSON
+  regions_fingerprint JSON,
+  source_url TEXT
 );
 
 CREATE TABLE IF NOT EXISTS issues (

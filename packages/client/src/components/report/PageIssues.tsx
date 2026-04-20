@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, FileText, ExternalLink, Layers } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, ExternalLink, Layers, ArrowUpRight } from 'lucide-react';
 import type { PageIssue, Issue } from '../../types';
 import { IssueCard } from './IssueCard';
 
@@ -13,6 +13,7 @@ interface GroupedPage {
   pages: PageIssue[];
   issues: Issue[];
   uniqueIssueCount: number;
+  sourceUrl?: string | null;
 }
 
 function getBasePath(url: string): string {
@@ -64,6 +65,7 @@ export function PageIssues({ pages }: PageIssuesProps) {
         pages: [page],
         issues: page.issues,
         uniqueIssueCount: page.issues.length,
+        sourceUrl: page.sourceUrl,
       }));
     }
 
@@ -83,6 +85,7 @@ export function PageIssues({ pages }: PageIssuesProps) {
           pages: [page],
           issues: [...page.issues],
           uniqueIssueCount: 0,
+          sourceUrl: page.sourceUrl,
         });
       }
     }
@@ -147,13 +150,13 @@ export function PageIssues({ pages }: PageIssuesProps) {
                   <ChevronRight className="w-5 h-5 text-foreground-muted" />
                 )}
                 <FileText className="w-5 h-5 text-foreground-muted" />
-                <div className="text-left">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium text-foreground truncate max-w-md">
+                <div className="text-left min-w-0 flex-1">
+                  <div className="flex items-start gap-2 flex-wrap">
+                    <h3 className="font-medium text-foreground break-all">
                       {group.title}
                     </h3>
                     {group.pages.length > 1 && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium whitespace-nowrap flex-shrink-0">
                         {group.pages.length} pages
                       </span>
                     )}
@@ -164,11 +167,19 @@ export function PageIssues({ pages }: PageIssuesProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="text-xs text-foreground-muted hover:text-accent truncate max-w-lg flex items-center gap-1 group"
+                      className="text-xs text-foreground-muted hover:text-accent flex items-center gap-1 group break-all"
                     >
-                      <span className="truncate">{group.basePath}</span>
+                      <span>{group.basePath}</span>
                       <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                     </a>
+                  )}
+                  {group.sourceUrl && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <ArrowUpRight className="w-3 h-3 text-foreground-muted/50 flex-shrink-0" />
+                      <span className="text-[11px] text-foreground-muted/60 break-all">
+                        Found on: {group.sourceUrl}
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>

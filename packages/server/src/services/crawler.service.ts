@@ -17,7 +17,7 @@ export class CrawlerService {
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
   private visited: Set<string> = new Set();
-  private queue: Array<{ url: string; depth: number }> = [];
+  private queue: Array<{ url: string; depth: number; sourceUrl?: string }> = [];
   private io: SocketServer | null = null;
   private scanId: string = '';
   private config: ScanConfig | null = null;
@@ -70,13 +70,14 @@ export class CrawlerService {
     while (this.queue.length > 0 && this.visited.size < config.maxPages && !this.isCancelled) {
       const batch = this.queue.splice(0, config.concurrency);
       const results = await Promise.all(
-        batch.map(item => this.crawlPage(item.url, item.depth))
+        batch.map(item => this.crawlPage(item.url, item.depth, item.sourceUrl))
       );
 
-      for (const result of results) {
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
         if (result) {
           discoveredUrls.push(result.url);
-          this.processLinks(result.links, result.url, batch[0]?.depth ?? 0);
+          this.processLinks(result.links, result.url, batch[i]?.depth ?? 0);
         }
       }
 
@@ -96,7 +97,7 @@ export class CrawlerService {
     return discoveredUrls;
   }
 
-  private async crawlPage(url: string, depth: number): Promise<CrawlResult | null> {
+  private async crawlPage(url: string, depth: number, sourceUrl?: string): Promise<CrawlResult | null> {
     if (this.visited.has(url)) {
       return null;
     }
@@ -152,7 +153,7 @@ export class CrawlerService {
       });
 
       // Save page to database
-      const pageRecord = PageModel.create(this.scanId, url);
+      const pageRecord = PageModel.create(this.scanId, url, sourceUrl);
       PageModel.updateStatus(pageRecord.id, 'pending', { title, http_status: httpStatus, load_time_ms: loadTimeMs });
 
       // Emit event
@@ -209,7 +210,7 @@ export class CrawlerService {
           this.patternCounts.set(pattern, count + 1);
         }
 
-        this.queue.push({ url: normalized, depth: currentDepth + 1 });
+        this.queue.push({ url: normalized, depth: currentDepth + 1, sourceUrl: currentUrl });
       }
     }
   }

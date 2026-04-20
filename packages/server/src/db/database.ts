@@ -21,6 +21,13 @@ export function initializeDatabase(): void {
   const database = getDatabase();
   const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf-8');
   database.exec(schema);
+
+  // Migration: add source_url column if missing (existing DBs)
+  const cols = database.prepare("PRAGMA table_info(pages)").all() as Array<{ name: string }>;
+  if (!cols.some(c => c.name === 'source_url')) {
+    database.exec('ALTER TABLE pages ADD COLUMN source_url TEXT');
+  }
+
   console.log('Database initialized successfully');
 }
 

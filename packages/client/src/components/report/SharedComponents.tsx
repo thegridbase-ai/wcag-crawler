@@ -49,13 +49,18 @@ export function SharedComponents({ components }: SharedComponentsProps) {
               <span className="text-xl">
                 {REGION_ICONS[component.region as keyof typeof REGION_ICONS] || '❓'}
               </span>
-              <div className="text-left">
-                <h3 className="font-heading font-medium text-foreground">
+              <div className="text-left min-w-0 flex-1">
+                <h3 className="font-heading font-medium text-foreground break-all">
                   {component.label}
                 </h3>
                 <p className="text-sm text-foreground-muted">
                   Found on {component.pageCount} pages
                 </p>
+                {component.pageUrls?.length > 0 && (
+                  <p className="text-[11px] text-foreground-muted/60 break-all mt-0.5">
+                    {component.pageUrls.map(u => { try { return new URL(u).pathname; } catch { return u; } }).join(', ')}
+                  </p>
+                )}
               </div>
             </div>
 

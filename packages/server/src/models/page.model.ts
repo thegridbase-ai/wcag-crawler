@@ -13,17 +13,18 @@ export interface Page {
   load_time_ms: number | null;
   scanned_at: string | null;
   regions_fingerprint: Record<string, string> | null;
+  source_url: string | null;
 }
 
 export const PageModel = {
-  create(scanId: string, url: string): Page {
+  create(scanId: string, url: string, sourceUrl?: string): Page {
     const db = getDatabase();
     const id = `page_${nanoid(12)}`;
     const stmt = db.prepare(`
-      INSERT INTO pages (id, scan_id, url, status)
-      VALUES (?, ?, ?, 'pending')
+      INSERT INTO pages (id, scan_id, url, status, source_url)
+      VALUES (?, ?, ?, 'pending', ?)
     `);
-    stmt.run(id, scanId, url);
+    stmt.run(id, scanId, url, sourceUrl || null);
     return this.findById(id)!;
   },
 

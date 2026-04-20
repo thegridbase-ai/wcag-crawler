@@ -56,12 +56,14 @@ export interface SharedComponent {
   label: string;
   region: string;
   pageCount: number;
+  pageUrls: string[];
   issues: Issue[];
 }
 
 export interface PageIssue {
   url: string;
   title: string | null;
+  sourceUrl?: string | null;
   issueCount: number;
   issues: Issue[];
 }
