@@ -139,6 +139,14 @@ export class CrawlerService {
       const httpStatus = response?.status() || 0;
       const loadTimeMs = Date.now() - startTime;
 
+      // Skip non-HTML responses (PDFs, images, etc. served via dynamic URLs like .action, .do)
+      const contentType = response?.headers()?.['content-type'] || '';
+      if (contentType && !contentType.includes('text/html') && !contentType.includes('application/xhtml')) {
+        logger.info(`Skipping non-HTML response: ${url} (content-type: ${contentType})`);
+        await page.close();
+        return null;
+      }
+
       // Wait for custom selector if specified
       if (this.config?.waitForSelector) {
         await page.waitForSelector(this.config.waitForSelector, { timeout: 5000 }).catch(() => {});

@@ -110,10 +110,20 @@ export class ScannerService {
     try {
       PageModel.updateStatus(page.id, 'scanning');
 
-      await playwrightPage.goto(page.url, {
+      const response = await playwrightPage.goto(page.url, {
         waitUntil: 'domcontentloaded',
         timeout: 30000,
       });
+
+      // Skip non-HTML responses (PDFs, images served via dynamic URLs)
+      const contentType = response?.headers()?.['content-type'] || '';
+      if (contentType && !contentType.includes('text/html') && !contentType.includes('application/xhtml')) {
+        logger.info(`Skipping non-HTML page: ${page.url} (content-type: ${contentType})`);
+        PageModel.updateStatus(page.id, 'complete');
+        await playwrightPage.close();
+        return null;
+      }
+
       // Give page a moment to finish loading dynamic content
       await playwrightPage.waitForTimeout(1000);
 
