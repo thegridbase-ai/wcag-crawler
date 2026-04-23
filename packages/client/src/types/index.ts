@@ -7,7 +7,7 @@ export interface ScanConfig {
   waitForSelector: string | null;
   respectRobotsTxt: boolean;
   viewport: { width: number; height: number };
-  authentication: { loginUrl: string; username: string; password: string } | null;
+  authentication: { authType: 'form' | 'basic'; loginUrl: string; username: string; password: string } | null;
 }
 
 export interface Scan {

@@ -22,6 +22,7 @@ export function ScanForm() {
     excludePatterns: [],
   });
   const [authEnabled, setAuthEnabled] = useState(false);
+  const [authType, setAuthType] = useState<'form' | 'basic'>('form');
   const [authFields, setAuthFields] = useState({ loginUrl: '', username: '', password: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,8 +45,13 @@ export function ScanForm() {
     try {
       const finalConfig = {
         ...config,
-        authentication: authEnabled && authFields.loginUrl && authFields.username
-          ? authFields
+        authentication: authEnabled && authFields.username
+          ? {
+              authType,
+              loginUrl: authType === 'basic' ? url : authFields.loginUrl,
+              username: authFields.username,
+              password: authFields.password,
+            }
           : null,
       };
       const result = await scanApi.create(url, finalConfig);
@@ -212,23 +218,57 @@ export function ScanForm() {
             {authEnabled && (
               <div className="space-y-3 pl-7">
                 <div>
-                  <label className="block text-xs font-medium text-foreground-muted mb-1">Login Page URL</label>
-                  <input
-                    type="url"
-                    value={authFields.loginUrl}
-                    onChange={(e) => setAuthFields({ ...authFields, loginUrl: e.target.value })}
-                    placeholder="https://example.com/login"
-                    className="input text-sm"
-                  />
+                  <label className="block text-xs font-medium text-foreground-muted mb-2">Authentication Type</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAuthType('basic')}
+                      className={`px-4 py-2 rounded-lg border text-sm transition-all ${
+                        authType === 'basic'
+                          ? 'bg-primary text-white border-primary'
+                          : 'border-border text-foreground-muted hover:border-foreground-muted'
+                      }`}
+                    >
+                      HTTP Basic Auth
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAuthType('form')}
+                      className={`px-4 py-2 rounded-lg border text-sm transition-all ${
+                        authType === 'form'
+                          ? 'bg-primary text-white border-primary'
+                          : 'border-border text-foreground-muted hover:border-foreground-muted'
+                      }`}
+                    >
+                      Form Login
+                    </button>
+                  </div>
+                  <p className="text-xs text-foreground-muted/60 mt-1">
+                    {authType === 'basic'
+                      ? 'For sites that show a browser popup asking for username and password'
+                      : 'For sites with a login form (HTML page with username/password fields)'}
+                  </p>
                 </div>
+                {authType === 'form' && (
+                  <div>
+                    <label className="block text-xs font-medium text-foreground-muted mb-1">Login Page URL</label>
+                    <input
+                      type="url"
+                      value={authFields.loginUrl}
+                      onChange={(e) => setAuthFields({ ...authFields, loginUrl: e.target.value })}
+                      placeholder="https://example.com/login"
+                      className="input text-sm"
+                    />
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-foreground-muted mb-1">Username / Email</label>
+                    <label className="block text-xs font-medium text-foreground-muted mb-1">Username</label>
                     <input
                       type="text"
                       value={authFields.username}
                       onChange={(e) => setAuthFields({ ...authFields, username: e.target.value })}
-                      placeholder="user@example.com"
+                      placeholder="username"
                       className="input text-sm"
                       autoComplete="off"
                     />

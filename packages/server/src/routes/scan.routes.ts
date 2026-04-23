@@ -31,6 +31,7 @@ const scanConfigSchema = z.object({
       height: z.number().default(720),
     }).default({ width: 1280, height: 720 }),
     authentication: z.object({
+      authType: z.enum(['form', 'basic']).default('form'),
       loginUrl: z.string().url(),
       username: z.string(),
       password: z.string(),

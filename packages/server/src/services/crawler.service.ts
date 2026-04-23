@@ -51,16 +51,31 @@ export class CrawlerService {
     const normalizedRoot = normalizeUrl(rootUrl);
     this.rootOrigin = new URL(normalizedRoot).origin;
 
-    this.context = await this.browser.newContext({
+    const contextOptions: {
+      viewport: { width: number; height: number };
+      userAgent: string;
+      httpCredentials?: { username: string; password: string };
+    } = {
       viewport: config.viewport,
       userAgent: 'A11yCrawler/1.0 (WCAG Accessibility Scanner)',
-    });
+    };
+
+    // Set HTTP Basic Auth credentials if configured
+    if (config.authentication?.authType === 'basic') {
+      contextOptions.httpCredentials = {
+        username: config.authentication.username,
+        password: config.authentication.password,
+      };
+      logger.info('HTTP Basic Auth credentials configured for crawler');
+    }
+
+    this.context = await this.browser.newContext(contextOptions);
     // Set default navigation timeout to prevent hanging
     this.context.setDefaultNavigationTimeout(30000);
     this.context.setDefaultTimeout(30000);
 
     // Perform form-based login if authentication is configured
-    if (config.authentication) {
+    if (config.authentication?.authType === 'form') {
       await this.performLogin(config.authentication);
     }
 

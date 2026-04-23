@@ -54,12 +54,27 @@ export class ScannerService {
     this.config = config;
     this.isCancelled = false;
 
-    this.context = await this.browser.newContext({
+    const contextOptions: {
+      viewport: { width: number; height: number };
+      userAgent: string;
+      httpCredentials?: { username: string; password: string };
+    } = {
       viewport: config.viewport,
       userAgent: 'A11yCrawler/1.0 (WCAG Accessibility Scanner)',
-    });
+    };
 
-    // Inject authentication cookies from crawler session
+    // Set HTTP Basic Auth credentials if configured
+    if (config.authentication?.authType === 'basic') {
+      contextOptions.httpCredentials = {
+        username: config.authentication.username,
+        password: config.authentication.password,
+      };
+      logger.info('HTTP Basic Auth credentials configured for scanner');
+    }
+
+    this.context = await this.browser.newContext(contextOptions);
+
+    // Inject authentication cookies from crawler session (for form-based auth)
     if (cookies && cookies.length > 0) {
       await this.context.addCookies(cookies);
       logger.info('Injected authentication cookies into scanner context', { count: cookies.length });
