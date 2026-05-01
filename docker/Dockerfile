@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-slim AS builder
+FROM node:20-bookworm-slim AS builder
 
 # Install pnpm
 RUN npm install -g pnpm
@@ -21,7 +21,7 @@ COPY . .
 RUN pnpm build
 
 # Production stage
-FROM node:20-slim
+FROM node:20-bookworm-slim
 
 # Install Chromium dependencies for Playwright
 RUN apt-get update && apt-get install -y \
