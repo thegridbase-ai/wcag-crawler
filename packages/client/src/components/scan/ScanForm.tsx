@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Globe, ChevronDown, ChevronUp, Loader2, ArrowRight, Lock } from 'lucide-react';
 import { scanApi } from '../../lib/api';
 import { scanStorage } from '../../lib/storage';
-import { DEFAULT_SCAN_CONFIG, VIEWPORT_PRESETS } from '../../lib/constants';
+import { DEFAULT_SCAN_CONFIG, VIEWPORT_PRESETS, WCAG_VERSIONS } from '../../lib/constants';
 import type { ScanConfig } from '../../types';
 
 export function ScanForm() {
@@ -20,6 +20,7 @@ export function ScanForm() {
     delay: DEFAULT_SCAN_CONFIG.delay,
     viewport: DEFAULT_SCAN_CONFIG.viewport,
     excludePatterns: [],
+    wcagVersion: DEFAULT_SCAN_CONFIG.wcagVersion,
   });
   const [authEnabled, setAuthEnabled] = useState(false);
   const [authType, setAuthType] = useState<'form' | 'basic'>('form');
@@ -195,6 +196,47 @@ export function ScanForm() {
                   {preset.label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              WCAG Version
+            </label>
+            <p className="text-xs text-foreground-muted mb-2">
+              Accessibility standard to test against. WCAG 2.2 includes all 2.1 rules plus newer success criteria.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {WCAG_VERSIONS.map((version) => {
+                const selected = config.wcagVersion === version.value;
+                return (
+                  <button
+                    key={version.value}
+                    type="button"
+                    onClick={() => setConfig({ ...config, wcagVersion: version.value })}
+                    className={`text-left px-4 py-3 rounded-lg border text-sm transition-all ${
+                      selected
+                        ? 'bg-primary/5 text-foreground border-primary'
+                        : 'border-border text-foreground-muted hover:border-foreground-muted'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`font-medium ${selected ? 'text-primary' : 'text-foreground'}`}>
+                        {version.label}
+                      </span>
+                      {version.value === '2.1' && (
+                        <span className="text-[10px] uppercase tracking-wide text-foreground-muted/60">Default</span>
+                      )}
+                      {version.value === '2.2' && (
+                        <span className="text-[10px] uppercase tracking-wide text-primary/80">Latest</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-foreground-muted leading-snug">
+                      {version.description}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

@@ -147,10 +147,16 @@ export class ScannerService {
         await playwrightPage.waitForSelector(this.config.waitForSelector, { timeout: 5000 }).catch(() => {});
       }
 
-      // Run axe-core analysis with timeout - WCAG 2.1 AA only
+      // Run axe-core analysis with timeout - WCAG version selectable (default 2.1 AA)
+      // WCAG 2.2 is a superset of 2.1; the wcag22aa tag covers all new 2.2 success criteria
+      // (incl. Level A additions like 3.2.6 Consistent Help and 3.3.7 Redundant Entry).
+      const wcagTags = this.config?.wcagVersion === '2.2'
+        ? ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
+        : ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+
       const results = await Promise.race([
         new AxeBuilder({ page: playwrightPage })
-          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+          .withTags(wcagTags)
           .analyze(),
         this.delay(60000).then(() => { throw new Error('axe-core analysis timed out after 60s'); }),
       ]);

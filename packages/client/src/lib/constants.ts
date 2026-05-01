@@ -49,6 +49,19 @@ export const VIEWPORT_PRESETS = [
   { label: 'Mobile', width: 375, height: 667 },
 ] as const;
 
+export const WCAG_VERSIONS = [
+  {
+    value: '2.1' as const,
+    label: 'WCAG 2.1',
+    description: 'Stable industry baseline (AA). Covers all 2.0 + 2.1 success criteria.',
+  },
+  {
+    value: '2.2' as const,
+    label: 'WCAG 2.2',
+    description: 'Latest standard (AA). Adds 9 new criteria: target size, focus visibility, dragging, accessible auth, consistent help, redundant entry.',
+  },
+] as const;
+
 export const DEFAULT_SCAN_CONFIG = {
   maxPages: 50,
   maxDepth: 3,
@@ -59,4 +72,5 @@ export const DEFAULT_SCAN_CONFIG = {
   respectRobotsTxt: true,
   viewport: { width: 1280, height: 720 },
   authentication: null,
+  wcagVersion: '2.1' as const,
 };

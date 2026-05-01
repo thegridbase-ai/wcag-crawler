@@ -36,6 +36,7 @@ const scanConfigSchema = z.object({
       username: z.string(),
       password: z.string(),
     }).nullable().default(null),
+    wcagVersion: z.enum(['2.1', '2.2']).default('2.1'),
   }).default({}),
 });
 

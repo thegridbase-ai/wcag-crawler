@@ -1,3 +1,5 @@
+export type WcagVersion = '2.1' | '2.2';
+
 export interface ScanConfig {
   maxPages: number;
   maxDepth: number;
@@ -8,6 +10,7 @@ export interface ScanConfig {
   respectRobotsTxt: boolean;
   viewport: { width: number; height: number };
   authentication: { authType: 'form' | 'basic'; loginUrl: string; username: string; password: string } | null;
+  wcagVersion: WcagVersion;
 }
 
 export interface Scan {
