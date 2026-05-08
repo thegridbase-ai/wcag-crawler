@@ -8,6 +8,8 @@ build/
 
 # Database
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
 
@@ -43,3 +45,4 @@ test-results/
 *.tgz
 .cache/
 .vercel
+.claude/
