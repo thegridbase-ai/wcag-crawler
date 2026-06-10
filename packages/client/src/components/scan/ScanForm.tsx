@@ -74,20 +74,22 @@ export function ScanForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* URL Input with integrated button */}
       <div className="relative">
-        <div className="flex items-center gap-2 bg-surface border border-border rounded-2xl p-2 shadow-soft focus-within:ring-2 focus-within:ring-primary/10 focus-within:border-primary/30 transition-all">
-          <Globe className="ml-3 w-5 h-5 text-foreground-muted flex-shrink-0" />
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.com or http://localhost:3000"
-            className="flex-1 bg-transparent border-none outline-none text-foreground placeholder-foreground-muted/50 text-base py-2"
-            autoFocus
-          />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 bg-surface border border-border rounded-2xl p-2 shadow-soft focus-within:ring-2 focus-within:ring-primary/10 focus-within:border-primary/30 transition-all">
+          <div className="flex items-center flex-1 min-w-0">
+            <Globe className="ml-3 w-5 h-5 text-foreground-muted flex-shrink-0" />
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com or http://localhost:3000"
+              className="flex-1 min-w-0 bg-transparent border-none outline-none text-foreground placeholder-foreground-muted/50 text-base py-2 px-3"
+              autoFocus
+            />
+          </div>
           <button
             type="submit"
             disabled={isLoading}
-            className="btn btn-primary gap-2 disabled:opacity-50"
+            className="btn btn-primary gap-2 disabled:opacity-50 justify-center w-full sm:w-auto"
           >
             {isLoading ? (
               <>

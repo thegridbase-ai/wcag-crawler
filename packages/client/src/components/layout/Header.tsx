@@ -20,13 +20,13 @@ function formatBuildTime(iso: string): string {
 export function Header() {
   return (
     <header className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
-      <div className="floating-header px-4 py-2 flex items-center gap-6">
+      <div className="floating-header px-3 sm:px-4 py-2 flex items-center gap-3 sm:gap-6 max-w-[calc(100vw-2rem)]">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
             <Accessibility className="w-5 h-5 text-white" />
           </div>
-          <span className="font-semibold text-foreground">WCAG Crawler</span>
+          <span className="font-semibold text-foreground whitespace-nowrap">WCAG Crawler</span>
         </Link>
 
         {/* Divider */}
@@ -43,11 +43,11 @@ export function Header() {
           </Link>
         </nav>
 
-        {/* Divider */}
-        <div className="w-px h-6 bg-border" />
+        {/* Divider (desktop only) */}
+        <div className="hidden md:block w-px h-6 bg-border" />
 
-        {/* Last Deployed */}
-        <span className="text-[11px] text-foreground-muted/50 whitespace-nowrap">
+        {/* Last Deployed (desktop only) */}
+        <span className="hidden md:inline text-[11px] text-foreground-muted/50 whitespace-nowrap">
           Deployed: {formatBuildTime(__BUILD_TIME__)}
         </span>
       </div>
