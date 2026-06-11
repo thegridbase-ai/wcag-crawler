@@ -119,7 +119,7 @@ export function ScanForm() {
         <button
           type="button"
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground transition-colors mx-auto"
+          className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground transition-colors mx-auto py-2.5 sm:py-1 px-3"
         >
           {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           <span>Advanced Options</span>
