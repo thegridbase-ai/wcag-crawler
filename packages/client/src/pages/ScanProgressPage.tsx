@@ -11,17 +11,30 @@ export function ScanProgressPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { onEvent } = useSocket();
-  const { status, reset } = useScanStore();
+  const { status, reset, updateStatus, setError } = useScanStore();
 
   useEffect(() => {
     if (!id) return;
 
-    // Check if scan is already complete
-    scanApi.get(id).then((scan) => {
+    const syncFromApi = (scan: { status: string; error_message?: string | null }) => {
       if (scan.status === 'complete') {
         navigate(`/scans/${id}/report`, { replace: true });
+      } else if (scan.status === 'failed') {
+        updateStatus('failed');
+        setError(scan.error_message || null);
       }
-    });
+    };
+
+    // Check if scan already finished (a fast failure can happen before the
+    // socket room is joined, so events alone are not enough)
+    scanApi.get(id).then(syncFromApi).catch(() => {});
+
+    // Polling fallback in case a status event is missed (e.g. reconnect)
+    const interval = setInterval(() => {
+      const current = useScanStore.getState().status;
+      if (current === 'complete' || current === 'failed') return;
+      scanApi.get(id).then(syncFromApi).catch(() => {});
+    }, 10000);
 
     // Listen for completion
     const cleanup = onEvent<ScanCompleteEvent>('scan:complete', (data) => {
@@ -33,6 +46,7 @@ export function ScanProgressPage() {
     });
 
     return () => {
+      clearInterval(interval);
       cleanup();
       reset();
     };

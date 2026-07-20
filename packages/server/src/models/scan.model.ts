@@ -29,6 +29,7 @@ export interface Scan {
   moderate_count: number;
   minor_count: number;
   score: number | null;
+  error_message: string | null;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
@@ -67,13 +68,16 @@ export const ScanModel = {
     })) as Scan[];
   },
 
-  updateStatus(id: string, status: Scan['status']): void {
+  updateStatus(id: string, status: Scan['status'], errorMessage?: string): void {
     const db = getDatabase();
     const updates: Record<string, unknown> = { status };
     if (status === 'crawling') {
       updates.started_at = new Date().toISOString();
     } else if (status === 'complete' || status === 'failed') {
       updates.completed_at = new Date().toISOString();
+    }
+    if (errorMessage !== undefined) {
+      updates.error_message = errorMessage;
     }
     const setClauses = Object.keys(updates).map(k => `${k} = ?`).join(', ');
     const stmt = db.prepare(`UPDATE scans SET ${setClauses} WHERE id = ?`);

@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS scans (
   moderate_count INTEGER DEFAULT 0,
   minor_count INTEGER DEFAULT 0,
   score REAL,
+  error_message TEXT,
   started_at DATETIME,
   completed_at DATETIME,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP

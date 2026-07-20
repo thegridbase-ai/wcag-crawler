@@ -28,6 +28,12 @@ export function initializeDatabase(): void {
     database.exec('ALTER TABLE pages ADD COLUMN source_url TEXT');
   }
 
+  // Migration: add error_message column if missing (existing DBs)
+  const scanCols = database.prepare("PRAGMA table_info(scans)").all() as Array<{ name: string }>;
+  if (!scanCols.some(c => c.name === 'error_message')) {
+    database.exec('ALTER TABLE scans ADD COLUMN error_message TEXT');
+  }
+
   console.log('Database initialized successfully');
 }
 

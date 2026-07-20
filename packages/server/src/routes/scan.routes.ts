@@ -56,7 +56,8 @@ export function createScanRoutes(io: SocketServer): Router {
       // Start scan in background
       runScan(scan.id, parsed.url, config, io).catch(error => {
         logger.error('Scan failed', { scanId: scan.id, error: error.message });
-        ScanModel.updateStatus(scan.id, 'failed');
+        ScanModel.updateStatus(scan.id, 'failed', error.message);
+        io.to(scan.id).emit('scan:status', { scanId: scan.id, status: 'failed', error: error.message });
         io.to(scan.id).emit('scan:error', { scanId: scan.id, error: error.message });
       });
 
@@ -143,7 +144,8 @@ export function createScanRoutes(io: SocketServer): Router {
 
       crawlerService.cancel();
       scannerService.cancel();
-      ScanModel.updateStatus(scan.id, 'failed');
+      ScanModel.updateStatus(scan.id, 'failed', 'Scan cancelled by user');
+      io.to(scan.id).emit('scan:status', { scanId: scan.id, status: 'failed', error: 'Scan cancelled by user' });
       logger.info('Scan cancelled', { scanId: scan.id });
       res.json({ message: 'Scan cancelled' });
     } catch (error) {
@@ -153,6 +155,12 @@ export function createScanRoutes(io: SocketServer): Router {
   });
 
   return router;
+}
+
+// A cancelled scan is marked 'failed' by the cancel route while runScan is
+// still executing — later phases must not overwrite that status
+function wasCancelled(scanId: string): boolean {
+  return ScanModel.findById(scanId)?.status === 'failed';
 }
 
 async function runScan(scanId: string, rootUrl: string, config: ScanConfig, io: SocketServer): Promise<void> {
@@ -171,6 +179,11 @@ async function runScan(scanId: string, rootUrl: string, config: ScanConfig, io: 
   // Close crawler browser before starting scanner to free memory
   await crawlerService.close();
 
+  if (wasCancelled(scanId)) {
+    logger.info('Scan aborted after crawl (cancelled)', { scanId });
+    return;
+  }
+
   // Phase 2: Scanning
   ScanModel.updateStatus(scanId, 'scanning');
   io.to(scanId).emit('scan:status', { scanId, status: 'scanning' });
@@ -182,6 +195,12 @@ async function runScan(scanId: string, rootUrl: string, config: ScanConfig, io: 
   const scannedCount = PageModel.countScannedByScanId(scanId);
   ScanModel.updateCounts(scanId, { scanned_pages: scannedCount });
 
+  if (wasCancelled(scanId)) {
+    await scannerService.close();
+    logger.info('Scan aborted after scanning (cancelled)', { scanId });
+    return;
+  }
+
   // Phase 3: Analyzing (Deduplication)
   ScanModel.updateStatus(scanId, 'analyzing');
   io.to(scanId).emit('scan:status', { scanId, status: 'analyzing' });
@@ -191,6 +210,12 @@ async function runScan(scanId: string, rootUrl: string, config: ScanConfig, io: 
 
   // Calculate final score
   reportService.calculateAndUpdateScore(scanId);
+
+  if (wasCancelled(scanId)) {
+    await scannerService.close();
+    logger.info('Scan aborted before completion (cancelled)', { scanId });
+    return;
+  }
 
   // Complete
   ScanModel.updateStatus(scanId, 'complete');

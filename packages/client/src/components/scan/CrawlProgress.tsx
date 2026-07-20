@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, XCircle, Loader2, Clock, Lock, Unlock } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, Clock, Lock, Unlock, AlertTriangle } from 'lucide-react';
 import { useScanStore } from '../../stores/scanStore';
 import { useSocket } from '../../hooks/useSocket';
 import { ProgressBar } from '../common/ProgressBar';
@@ -19,18 +19,25 @@ export function CrawlProgress({ scanId }: CrawlProgressProps) {
     totalCount,
     percentage,
     status,
+    errorMessage,
     addDiscoveredPage,
     updatePageStatus,
     updateProgress,
     updateStatus,
+    setError,
   } = useScanStore();
 
   useEffect(() => {
     joinScan(scanId);
 
     const cleanups = [
-      onEvent<{ status: string }>('scan:status', (data) => {
+      onEvent<{ status: string; error?: string }>('scan:status', (data) => {
         updateStatus(data.status);
+        if (data.error) setError(data.error);
+      }),
+      onEvent<{ error: string }>('scan:error', (data) => {
+        updateStatus('failed');
+        setError(data.error);
       }),
       onEvent<CrawlPageFoundEvent>('crawl:page:found', (data) => {
         addDiscoveredPage({
@@ -126,7 +133,7 @@ export function CrawlProgress({ scanId }: CrawlProgressProps) {
 
           {discoveredPages.length === 0 && (
             <div className="flex items-center justify-center h-full text-foreground-muted">
-              Waiting for pages...
+              {status === 'failed' ? 'Scan failed before any pages were discovered' : 'Waiting for pages...'}
             </div>
           )}
         </div>
@@ -134,6 +141,15 @@ export function CrawlProgress({ scanId }: CrawlProgressProps) {
 
       {/* Right: Stats */}
       <div className="space-y-6">
+        {status === 'failed' && (
+          <div className="flex items-start gap-3 px-4 py-3 rounded-xl border bg-critical/5 border-critical/20 text-critical text-sm">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">Scan failed</p>
+              <p className="text-critical/80 break-words">{errorMessage || 'An unknown error occurred on the server.'}</p>
+            </div>
+          </div>
+        )}
         {authStatus && (
           <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm ${
             authStatus.success
