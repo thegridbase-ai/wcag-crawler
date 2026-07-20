@@ -60,8 +60,9 @@ COPY --from=builder /app/package.json ./
 # Install production dependencies only
 RUN npm install --omit=dev
 
-# Install Playwright Chromium
-RUN npx playwright install chromium
+# Install Playwright Chromium with all required system dependencies
+# (--with-deps keeps the apt package list in sync with the browser build)
+RUN npx playwright install --with-deps chromium
 
 # Copy database schema to dist/db/ (where database.ts looks for it)
 COPY --from=builder /app/src/db/schema.sql ./dist/db/
