@@ -2,6 +2,7 @@ import { ScanModel, Scan } from '../models/scan.model.js';
 import { PageModel } from '../models/page.model.js';
 import { IssueModel, Issue } from '../models/issue.model.js';
 import { deduplicationService, SharedComponent } from './deduplication.service.js';
+import { describeSkipReason } from '../utils/audit.utils.js';
 import { logger } from '../utils/logger.js';
 
 export interface ReportSummary {
@@ -64,11 +65,19 @@ export interface PageIssueReport {
   }>;
 }
 
+export interface SkippedPageReport {
+  url: string;
+  reason: string;
+  reasonLabel: string;
+  httpStatus: number | null;
+}
+
 export interface FullReport {
   scan: Scan;
   summary: ReportSummary;
   sharedComponents: SharedComponentReport[];
   pageSpecificIssues: PageIssueReport[];
+  skippedPages: SkippedPageReport[];
 }
 
 export class ReportService {
@@ -87,11 +96,21 @@ export class ReportService {
     const sharedComponentReports = this.buildSharedComponentReports(sharedComponents, issues);
     const pageSpecificIssues = this.buildPageSpecificReports(pages, issues);
 
+    const skippedPages: SkippedPageReport[] = pages
+      .filter(p => p.status === 'skipped')
+      .map(p => ({
+        url: p.url,
+        reason: p.skip_reason || 'unknown',
+        reasonLabel: describeSkipReason(p.skip_reason || 'unknown'),
+        httpStatus: p.http_status,
+      }));
+
     return {
       scan,
       summary,
       sharedComponents: sharedComponentReports,
       pageSpecificIssues,
+      skippedPages,
     };
   }
 

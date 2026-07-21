@@ -34,6 +34,11 @@ export function initializeDatabase(): void {
     database.exec('ALTER TABLE scans ADD COLUMN error_message TEXT');
   }
 
+  // Migration: add skip_reason column if missing (existing DBs)
+  if (!cols.some(c => c.name === 'skip_reason')) {
+    database.exec('ALTER TABLE pages ADD COLUMN skip_reason TEXT');
+  }
+
   console.log('Database initialized successfully');
 }
 

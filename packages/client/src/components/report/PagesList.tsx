@@ -1,10 +1,19 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, CheckCircle, XCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, XCircle, AlertCircle, MinusCircle, ExternalLink } from 'lucide-react';
 import type { PageSummary } from '../../types';
 
 interface PagesListProps {
   pages: PageSummary[];
 }
+
+const skipReasonLabel = (reason?: string | null): string => {
+  if (!reason) return 'Skipped';
+  if (reason === 'auth-gated') return 'Auth required';
+  if (reason === 'non-html') return 'Non-HTML';
+  if (reason === 'error-signature') return 'Error page';
+  if (reason.startsWith('http-')) return `HTTP ${reason.slice(5)}`;
+  return reason;
+};
 
 export function PagesList({ pages }: PagesListProps) {
   const [expanded, setExpanded] = useState(false);
@@ -14,6 +23,7 @@ export function PagesList({ pages }: PagesListProps) {
   const cleanPages = pages.filter(p => p.status === 'complete' && p.issueCount === 0);
   const withIssues = pages.filter(p => p.status === 'complete' && p.issueCount > 0);
   const errorPages = pages.filter(p => p.status === 'error');
+  const skippedPages = pages.filter(p => p.status === 'skipped');
 
   return (
     <div className="card mb-6">
@@ -40,6 +50,12 @@ export function PagesList({ pages }: PagesListProps) {
                 {errorPages.length} error
               </span>
             )}
+            {skippedPages.length > 0 && (
+              <span className="flex items-center gap-1">
+                <MinusCircle className="w-3.5 h-3.5 text-foreground-muted" />
+                {skippedPages.length} skipped (not auditable)
+              </span>
+            )}
           </div>
         </div>
         {expanded ? (
@@ -59,6 +75,8 @@ export function PagesList({ pages }: PagesListProps) {
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 {page.status === 'error' ? (
                   <XCircle className="w-4 h-4 text-critical flex-shrink-0" />
+                ) : page.status === 'skipped' ? (
+                  <MinusCircle className="w-4 h-4 text-foreground-muted flex-shrink-0" />
                 ) : page.issueCount === 0 ? (
                   <CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
                 ) : (
@@ -71,6 +89,8 @@ export function PagesList({ pages }: PagesListProps) {
               <div className="flex items-center gap-3 flex-shrink-0 ml-3">
                 {page.status === 'error' ? (
                   <span className="text-xs text-critical">Error</span>
+                ) : page.status === 'skipped' ? (
+                  <span className="text-xs text-foreground-muted">{skipReasonLabel(page.skipReason)}</span>
                 ) : page.issueCount > 0 ? (
                   <span className="text-xs text-serious">{page.issueCount} issues</span>
                 ) : (

@@ -8,7 +8,8 @@ import { scannerService } from '../services/scanner.service.js';
 import { deduplicationService } from '../services/deduplication.service.js';
 import { reportService } from '../services/report.service.js';
 import { logger } from '../utils/logger.js';
-import { isValidScanUrl } from '../utils/url.utils.js';
+import { isValidScanUrl, normalizeUrl } from '../utils/url.utils.js';
+import { describeSkipReason } from '../utils/audit.utils.js';
 
 // Custom URL validator that accepts localhost and local network URLs
 const urlSchema = z.string().refine(
@@ -107,6 +108,8 @@ export function createScanRoutes(io: SocketServer): Router {
           title: p.title,
           status: p.status,
           issueCount: p.issue_count,
+          skipReason: p.skip_reason,
+          httpStatus: p.http_status,
         })),
       });
     } catch (error) {
@@ -182,6 +185,21 @@ async function runScan(scanId: string, rootUrl: string, config: ScanConfig, io: 
   if (wasCancelled(scanId)) {
     logger.info('Scan aborted after crawl (cancelled)', { scanId });
     return;
+  }
+
+  // No auditable pages: fail with a clear reason instead of reporting a
+  // meaningless "score 100" on an empty audit
+  if (discoveredUrls.length === 0) {
+    const skipped = PageModel.findByScanId(scanId).filter(p => p.status === 'skipped');
+    const rootPage = skipped.find(p => p.url === normalizeUrl(rootUrl)) || skipped[0];
+    let message = 'No auditable pages found: the root URL could not be crawled.';
+    if (rootPage?.skip_reason) {
+      message = `No auditable pages found: root URL was skipped — ${describeSkipReason(rootPage.skip_reason)}.`;
+      if (rootPage.skip_reason === 'auth-gated') {
+        message += ' If you have credentials, configure authentication under Advanced Options.';
+      }
+    }
+    throw new Error(message);
   }
 
   // Phase 2: Scanning

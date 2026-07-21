@@ -37,8 +37,10 @@ export interface PageSummary {
   id: string;
   url: string;
   title: string | null;
-  status: 'pending' | 'scanning' | 'complete' | 'error';
+  status: 'pending' | 'scanning' | 'complete' | 'error' | 'skipped';
   issueCount: number;
+  skipReason?: string | null;
+  httpStatus?: number | null;
 }
 
 export interface Issue {
@@ -96,11 +98,19 @@ export interface ReportSummary {
   }>;
 }
 
+export interface SkippedPage {
+  url: string;
+  reason: string;
+  reasonLabel: string;
+  httpStatus: number | null;
+}
+
 export interface FullReport {
   scan: Scan;
   summary: ReportSummary;
   sharedComponents: SharedComponent[];
   pageSpecificIssues: PageIssue[];
+  skippedPages?: SkippedPage[];
 }
 
 // Socket events

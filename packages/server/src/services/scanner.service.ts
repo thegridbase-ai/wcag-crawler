@@ -5,6 +5,7 @@ import { ScanConfig } from '../models/scan.model.js';
 import { PageModel, Page } from '../models/page.model.js';
 import { IssueModel, IssueCreate } from '../models/issue.model.js';
 import { detectRegionFromSelector, generateFingerprint, DomRegion } from '../utils/fingerprint.js';
+import { resolveSkipReason } from '../utils/audit.utils.js';
 import { logger } from '../utils/logger.js';
 
 interface AxeViolation {
@@ -130,11 +131,22 @@ export class ScannerService {
         timeout: 30000,
       });
 
-      // Skip non-HTML responses (PDFs, images served via dynamic URLs)
-      const contentType = response?.headers()?.['content-type'] || '';
-      if (contentType && !contentType.includes('text/html') && !contentType.includes('application/xhtml')) {
-        logger.info(`Skipping non-HTML page: ${page.url} (content-type: ${contentType})`);
-        PageModel.updateStatus(page.id, 'complete');
+      // Guard again at scan time: the response can differ from crawl time
+      // (expired session, rate limiting). Never run axe on a non-2xx or
+      // non-HTML response.
+      const httpStatus = response?.status() || 0;
+      const headers = response?.headers() || {};
+      const contentType = headers['content-type'] || '';
+      const skipReason = resolveSkipReason({ httpStatus, headers, contentType });
+      if (skipReason) {
+        logger.info(`Skipping non-auditable page at scan time: ${page.url}`, { httpStatus, skipReason, contentType });
+        PageModel.updateStatus(page.id, 'skipped', { http_status: httpStatus, skip_reason: skipReason });
+        this.io?.to(this.scanId).emit('scan:page:skipped', {
+          scanId: this.scanId,
+          url: page.url,
+          reason: skipReason,
+          httpStatus,
+        });
         await playwrightPage.close();
         return null;
       }

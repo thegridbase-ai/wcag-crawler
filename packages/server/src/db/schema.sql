@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS pages (
   issue_count INTEGER DEFAULT 0,
   page_specific_issue_count INTEGER DEFAULT 0,
   http_status INTEGER,
+  skip_reason TEXT,
   load_time_ms INTEGER,
   scanned_at DATETIME,
   regions_fingerprint JSON,

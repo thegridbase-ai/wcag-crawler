@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, XCircle, Loader2, Clock, Lock, Unlock, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, Clock, Lock, Unlock, AlertTriangle, MinusCircle } from 'lucide-react';
 import { useScanStore } from '../../stores/scanStore';
 import { useSocket } from '../../hooks/useSocket';
 import { ProgressBar } from '../common/ProgressBar';
@@ -48,6 +48,19 @@ export function CrawlProgress({ scanId }: CrawlProgressProps) {
           issueCount: 0,
         });
       }),
+      onEvent<{ url: string; reason: string }>('crawl:page:skipped', (data) => {
+        addDiscoveredPage({
+          id: data.url,
+          url: data.url,
+          title: null,
+          status: 'skipped',
+          issueCount: 0,
+          skipReason: data.reason,
+        });
+      }),
+      onEvent<{ url: string }>('scan:page:skipped', (data) => {
+        updatePageStatus(data.url, 'skipped');
+      }),
       onEvent<{ url: string }>('scan:page:start', (data) => {
         updatePageStatus(data.url, 'scanning');
       }),
@@ -79,6 +92,8 @@ export function CrawlProgress({ scanId }: CrawlProgressProps) {
         return <XCircle className="w-4 h-4 text-critical" />;
       case 'scanning':
         return <Loader2 className="w-4 h-4 text-primary animate-spin" />;
+      case 'skipped':
+        return <MinusCircle className="w-4 h-4 text-foreground-muted" />;
       default:
         return <Clock className="w-4 h-4 text-foreground-muted" />;
     }

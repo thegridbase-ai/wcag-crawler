@@ -6,10 +6,11 @@ export interface Page {
   scan_id: string;
   url: string;
   title: string | null;
-  status: 'pending' | 'scanning' | 'complete' | 'error';
+  status: 'pending' | 'scanning' | 'complete' | 'error' | 'skipped';
   issue_count: number;
   page_specific_issue_count: number;
   http_status: number | null;
+  skip_reason: string | null;
   load_time_ms: number | null;
   scanned_at: string | null;
   regions_fingerprint: Record<string, string> | null;
@@ -60,7 +61,7 @@ export const PageModel = {
     } as Page;
   },
 
-  updateStatus(id: string, status: Page['status'], meta?: { title?: string; http_status?: number; load_time_ms?: number }): void {
+  updateStatus(id: string, status: Page['status'], meta?: { title?: string; http_status?: number; load_time_ms?: number; skip_reason?: string }): void {
     const db = getDatabase();
     const updates: Record<string, unknown> = { status };
     if (status === 'complete' || status === 'error') {
@@ -69,6 +70,7 @@ export const PageModel = {
     if (meta?.title) updates.title = meta.title;
     if (meta?.http_status) updates.http_status = meta.http_status;
     if (meta?.load_time_ms) updates.load_time_ms = meta.load_time_ms;
+    if (meta?.skip_reason) updates.skip_reason = meta.skip_reason;
 
     const setClauses = Object.keys(updates).map(k => `${k} = ?`).join(', ');
     const stmt = db.prepare(`UPDATE pages SET ${setClauses} WHERE id = ?`);

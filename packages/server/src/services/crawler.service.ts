@@ -3,6 +3,7 @@ import { Server as SocketServer } from 'socket.io';
 import { ScanConfig } from '../models/scan.model.js';
 import { PageModel } from '../models/page.model.js';
 import { normalizeUrl, isSameOrigin, shouldSkipUrl, resolveUrl, getUrlPattern } from '../utils/url.utils.js';
+import { resolveSkipReason, isErrorPageSignature } from '../utils/audit.utils.js';
 import { logger } from '../utils/logger.js';
 
 interface CrawlResult {
@@ -153,11 +154,37 @@ export class CrawlerService {
 
       const httpStatus = response?.status() || 0;
       const loadTimeMs = Date.now() - startTime;
+      const headers = response?.headers() || {};
+      const contentType = headers['content-type'] || '';
 
-      // Skip non-HTML responses (PDFs, images, etc. served via dynamic URLs like .action, .do)
-      const contentType = response?.headers()?.['content-type'] || '';
-      if (contentType && !contentType.includes('text/html') && !contentType.includes('application/xhtml')) {
-        logger.info(`Skipping non-HTML response: ${url} (content-type: ${contentType})`);
+      // Auditable-page filter: only 2xx HTML responses without an error
+      // signature are scanned. Everything else is recorded as skipped with a
+      // reason so the report can show what was excluded and why.
+      let skipReason = resolveSkipReason({ httpStatus, headers, contentType });
+
+      if (!skipReason) {
+        // Soft error pages: 200 responses that are really error bodies
+        const title = await page.title();
+        const bodyText = await page.evaluate(() => document.body?.innerText || '').catch(() => '');
+        if (isErrorPageSignature(title, bodyText)) {
+          skipReason = 'error-signature';
+        }
+      }
+
+      if (skipReason) {
+        logger.info(`Skipping non-auditable page: ${url}`, { httpStatus, skipReason, contentType });
+        const skippedRecord = PageModel.create(this.scanId, url, sourceUrl);
+        PageModel.updateStatus(skippedRecord.id, 'skipped', {
+          http_status: httpStatus,
+          skip_reason: skipReason,
+          load_time_ms: loadTimeMs,
+        });
+        this.io?.to(this.scanId).emit('crawl:page:skipped', {
+          scanId: this.scanId,
+          url,
+          reason: skipReason,
+          httpStatus,
+        });
         await page.close();
         return null;
       }
