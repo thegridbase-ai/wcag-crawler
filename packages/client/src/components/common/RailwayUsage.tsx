@@ -24,7 +24,7 @@ export function RailwayUsage() {
 
   const fetchUsage = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://wcag-crawler-server-production.up.railway.app';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://wcag-crawler-server.onrender.com';
       const response = await fetch(`${apiUrl}/api/system/railway-usage`);
       const data = await response.json();
 

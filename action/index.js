@@ -4,7 +4,7 @@
 // Standalone script with zero external dependencies (uses Node.js built-in fetch)
 // Calls the WCAG Crawler API, polls for completion, and outputs GitHub Actions summary
 
-const API_URL = (process.env.INPUT_API_URL || 'https://wcag-crawler-server-production.up.railway.app').replace(/\/$/, '');
+const API_URL = (process.env.INPUT_API_URL || 'https://wcag-crawler-server.onrender.com').replace(/\/$/, '');
 const TARGET_URL = process.env.INPUT_URL;
 const MAX_PAGES = parseInt(process.env.INPUT_MAX_PAGES || '50', 10);
 const MAX_DEPTH = parseInt(process.env.INPUT_MAX_DEPTH || '3', 10);
@@ -523,7 +523,7 @@ Environment Variables:
   INPUT_MAX_DEPTH     Max crawl depth (default: 3)
   INPUT_THRESHOLD     Minimum score to pass, 0-100 (default: 0)
   INPUT_FAIL_ON_CRITICAL  Fail if critical issues found (default: false)
-  INPUT_API_URL       WCAG Crawler API URL (default: https://wcag-crawler-server-production.up.railway.app)
+  INPUT_API_URL       WCAG Crawler API URL (default: https://wcag-crawler-server.onrender.com)
 
   GITHUB_ACTIONS      Set automatically in GitHub Actions
   GITHUB_STEP_SUMMARY Path to step summary file (set by GitHub)

@@ -27,7 +27,7 @@ inputs:
   api-url:
     description: 'WCAG Crawler API endpoint URL'
     required: false
-    default: 'https://wcag-crawler-server-production.up.railway.app'
+    default: 'https://wcag-crawler-server.onrender.com'
 
 outputs:
   score:

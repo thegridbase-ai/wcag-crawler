@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://wcag-crawler-server-production.up.railway.app';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://wcag-crawler-server.onrender.com';
 
 // Singleton socket instance
 let socketInstance: Socket | null = null;

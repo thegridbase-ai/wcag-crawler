@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { Scan, ScanConfig, FullReport } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://wcag-crawler-server-production.up.railway.app';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://wcag-crawler-server.onrender.com';
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
