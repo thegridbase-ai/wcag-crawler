@@ -7,6 +7,7 @@ import { IssueModel, IssueCreate } from '../models/issue.model.js';
 import { detectRegionFromSelector, generateFingerprint, DomRegion } from '../utils/fingerprint.js';
 import { resolveSkipReason } from '../utils/audit.utils.js';
 import { logger } from '../utils/logger.js';
+import { getEffectiveBrowserConcurrency } from '../utils/resource-limits.js';
 
 interface AxeViolation {
   id: string;
@@ -84,10 +85,18 @@ export class ScannerService {
     const pages = PageModel.findByScanId(scanId).filter(p => p.status === 'pending');
     const totalPages = pages.length;
     let scannedCount = 0;
+    const concurrency = getEffectiveBrowserConcurrency(config.concurrency);
+
+    if (concurrency !== config.concurrency) {
+      logger.info('Scanner concurrency limited by server resources', {
+        requested: config.concurrency,
+        effective: concurrency,
+      });
+    }
 
     // Process pages in batches
-    for (let i = 0; i < pages.length && !this.isCancelled; i += config.concurrency) {
-      const batch = pages.slice(i, i + config.concurrency);
+    for (let i = 0; i < pages.length && !this.isCancelled; i += concurrency) {
+      const batch = pages.slice(i, i + concurrency);
       await Promise.all(batch.map(page => this.scanPage(page)));
 
       scannedCount += batch.length;
@@ -101,7 +110,7 @@ export class ScannerService {
       });
 
       // Rate limiting between batches
-      if (i + config.concurrency < pages.length && config.delay > 0) {
+      if (i + concurrency < pages.length && config.delay > 0) {
         await this.delay(config.delay);
       }
     }

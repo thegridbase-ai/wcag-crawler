@@ -5,6 +5,7 @@ import { PageModel } from '../models/page.model.js';
 import { normalizeUrl, isSameOrigin, shouldSkipUrl, resolveUrl, getUrlPattern } from '../utils/url.utils.js';
 import { resolveSkipReason, isErrorPageSignature } from '../utils/audit.utils.js';
 import { logger } from '../utils/logger.js';
+import { getEffectiveBrowserConcurrency } from '../utils/resource-limits.js';
 
 interface CrawlResult {
   url: string;
@@ -82,9 +83,17 @@ export class CrawlerService {
 
     this.queue.push({ url: normalizedRoot, depth: 0 });
     const discoveredUrls: string[] = [];
+    const concurrency = getEffectiveBrowserConcurrency(config.concurrency);
+
+    if (concurrency !== config.concurrency) {
+      logger.info('Crawler concurrency limited by server resources', {
+        requested: config.concurrency,
+        effective: concurrency,
+      });
+    }
 
     while (this.queue.length > 0 && this.visited.size < config.maxPages && !this.isCancelled) {
-      const batch = this.queue.splice(0, config.concurrency);
+      const batch = this.queue.splice(0, concurrency);
       const results = await Promise.all(
         batch.map(item => this.crawlPage(item.url, item.depth, item.sourceUrl))
       );

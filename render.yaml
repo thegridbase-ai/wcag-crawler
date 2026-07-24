@@ -15,3 +15,6 @@ services:
         value: https://wcag.thegridbase.com
       - key: PORT
         value: 3001
+      # Render Free has 512 MB RAM; keep Playwright + axe-core within that limit.
+      - key: MAX_BROWSER_CONCURRENCY
+        value: 1
