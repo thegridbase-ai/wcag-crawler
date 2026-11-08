@@ -3,22 +3,6 @@ import { Accessibility, History } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { GoogleSignInButton } from '../auth/GoogleSignInButton';
 
-declare const __BUILD_TIME__: string;
-
-function formatBuildTime(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
-}
-
 export function Header() {
   const { state, role, signOut } = useAuth();
 
@@ -59,14 +43,6 @@ export function Header() {
         ) : (
           <GoogleSignInButton />
         )}
-
-        {/* Divider (desktop only) */}
-        <div className="hidden md:block w-px h-6 bg-border" />
-
-        {/* Last Deployed (desktop only) */}
-        <span className="hidden md:inline text-[11px] text-foreground-muted/50 whitespace-nowrap">
-          Deployed: {formatBuildTime(__BUILD_TIME__)}
-        </span>
       </div>
     </header>
   );

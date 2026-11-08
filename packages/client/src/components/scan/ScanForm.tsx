@@ -7,6 +7,7 @@ import { DEFAULT_SCAN_CONFIG, VIEWPORT_PRESETS, WCAG_VERSIONS } from '../../lib/
 import type { ScanConfig } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { clientPolicyForRole } from '../../lib/tier-policy';
+import { useServerWarmup } from '../../hooks/useServerWarmup';
 
 interface ScanFormProps {
   /** Render the advanced options open on first paint (used by SSR tests). */
@@ -21,6 +22,7 @@ export function ScanForm({ defaultShowAdvanced = false }: ScanFormProps = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(defaultShowAdvanced);
   const [error, setError] = useState<string | null>(null);
+  const warmup = useServerWarmup();
 
   const [config, setConfig] = useState<Partial<ScanConfig>>({
     maxPages: DEFAULT_SCAN_CONFIG.maxPages,
@@ -117,7 +119,7 @@ export function ScanForm({ defaultShowAdvanced = false }: ScanFormProps = {}) {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Scanning...
+                {warmup.status === 'ready' ? 'Starting scan...' : 'Waking scanner...'}
               </>
             ) : (
               <>
@@ -130,7 +132,19 @@ export function ScanForm({ defaultShowAdvanced = false }: ScanFormProps = {}) {
         {error && (
           <p className="absolute -bottom-6 left-0 text-sm text-critical">{error}</p>
         )}
-        {!error && (
+        {!error && warmup.status === 'waking' && (
+          <p className="text-xs text-foreground-muted mt-2 text-center" role="status" aria-live="polite">
+            <Loader2 className="inline w-3 h-3 mr-1 animate-spin align-[-1px]" />
+            The scanner engine is waking up ({Math.round(warmup.waitedMs / 1000)}s). You can type your URL now;
+            the first scan starts as soon as it is ready.
+          </p>
+        )}
+        {!error && warmup.status === 'down' && (
+          <p className="text-xs text-critical mt-2 text-center" role="status">
+            The scanner engine is not responding right now. Try again in a minute.
+          </p>
+        )}
+        {!error && (warmup.status === 'ready' || warmup.status === 'checking') && (
           <p className="text-xs text-foreground-muted/60 mt-2 text-center">
             {policy.maxPages === null
               ? `Admin scan covers unlimited pages and ${policy.maxDepth} levels deep.`

@@ -3,7 +3,7 @@ import type { AuthStateResponse, Scan, ScanConfig, ScanCreateResponse, FullRepor
 import { accessHeadersForScan } from './access-headers';
 import { expireStoredIdentity } from './auth-expiry';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://wcag-crawler-server.onrender.com';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://wcag-crawler-server.onrender.com';
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
